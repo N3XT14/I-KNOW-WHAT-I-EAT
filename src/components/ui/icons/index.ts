@@ -1,0 +1,9 @@
+export { default as CalendarIcon } from "./CalendarIcon";
+export { default as UsersIcon } from "./UsersIcon";
+export { default as FileTextIcon } from "./FileTextIcon";
+export { default as UserCircleIcon } from "./UserCircleIcon";
+export { default as ChevronLeftIcon } from "./ChevronLeftIcon";
+export { default as MenuIcon } from "./MenuIcon";
+export { default as BellIcon } from "./BellIcon";
+export { default as LogOutIcon } from "./LogOutIcon";
+export { default as StarIcon } from "./StarIcon";

@@ -1,0 +1,157 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * Label Literacy's own palette — forked from the Riva web project's token
+ * structure (same variable names, so components/ui/* work unmodified) but
+ * with new values. Not tied to theme.dart; this is a separate product.
+ * Warm amber (food/energy) as primary instead of clinic teal, keeping the
+ * calm/trustworthy surface tones so it still reads credible to parents.
+ */
+:root {
+  --color-primary: #d97a2b;
+  --color-primary-dark: #b45f1b;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #fbe6d2;
+
+  --color-secondary: #3f8f6f;
+  --color-on-secondary: #ffffff;
+
+  --color-background: #f7f9f9;
+  --color-surface: #ffffff;
+  --color-surface-variant: #f0f4f4;
+
+  --color-on-surface: #1f2a2a;
+  --color-on-surface-variant: #4a5a5a;
+
+  --color-outline: #d5e0e0;
+
+  --color-success: #4caf50;
+  --color-warning: #f2b705;
+  --color-attention: #e57373;
+  --color-info: #4db6ac;
+  --color-error: #ba1a1a;
+  --color-error-container: #fdedec;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-pill: 999px;
+
+  /* Approximates AppShadows.subtleConst / softConst from theme.dart —
+     Flutter's BoxShadow blur/spread doesn't map 1:1 to CSS box-shadow, so
+     these are tuned by eye to read the same, not converted by formula. */
+  --shadow-subtle: 0 2px 6px rgba(31, 42, 42, 0.05), 0 1px 2px rgba(31, 42, 42, 0.04);
+  --shadow-card: 0 8px 20px rgba(31, 42, 42, 0.07), 0 1px 2px rgba(31, 42, 42, 0.05);
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  /* Web-only layout tokens (not from theme.dart — there's no sidebar rail
+     concept on mobile, so these have no Flutter source of truth). Kept as
+     vars rather than hardcoded so the collapsed/expanded rail width only
+     needs updating in one place. */
+  --sidebar-w-expanded: 264px;
+  --sidebar-w-collapsed: 76px;
+  --topbar-h: 64px;
+
+  /* shadcn/ui compatibility layer — shadcn's generated components (Dialog,
+     Select, Tabs, Tooltip, Popover, Switch) reference their own default
+     token names (bg-primary, bg-background, text-foreground, border-input,
+     etc). Rather than hand-editing every generated file — which would be
+     overwritten the next time `npx shadcn add --overwrite` runs — these
+     aliases point shadcn's expected names at our real design tokens above.
+     This is the ONLY source of these values; nothing below should diverge
+     from the --color-* tokens already defined. */
+  --color-foreground: var(--color-on-surface);
+  --color-secondary-foreground: var(--color-on-secondary);
+  --color-muted: var(--color-surface-variant);
+  --color-muted-foreground: var(--color-on-surface-variant);
+  --color-accent: var(--color-primary-container);
+  --color-accent-foreground: var(--color-on-surface);
+  --color-destructive: var(--color-error);
+  --color-destructive-foreground: #ffffff;
+  --color-border: var(--color-outline);
+  --color-input: var(--color-outline);
+  --color-ring: var(--color-primary);
+  --color-popover: var(--color-surface);
+  --color-popover-foreground: var(--color-on-surface);
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-on-surface);
+}
+
+/* This app has no dark theme designed yet. Tailwind v4's default `dark:`
+   variant follows the OS `prefers-color-scheme` media query, and several
+   generated shadcn components (Select, Switch, Tabs) ship `dark:` classes.
+   Without this line, any user with a dark-mode OS/browser would silently
+   get shadcn's unthemed dark defaults on just those three components while
+   the rest of the app stayed light. Scoping `dark:` to a `.dark` class we
+   never apply neutralizes that until real dark-theme tokens exist. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-primary: var(--color-primary);
+  --color-primary-dark: var(--color-primary-dark);
+  --color-on-primary: var(--color-on-primary);
+  --color-primary-container: var(--color-primary-container);
+  --color-secondary: var(--color-secondary);
+  --color-on-secondary: var(--color-on-secondary);
+  --color-background: var(--color-background);
+  --color-surface: var(--color-surface);
+  --color-surface-variant: var(--color-surface-variant);
+  --color-on-surface: var(--color-on-surface);
+  --color-on-surface-variant: var(--color-on-surface-variant);
+  --color-outline: var(--color-outline);
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-attention: var(--color-attention);
+  --color-info: var(--color-info);
+  --color-error: var(--color-error);
+  --color-error-container: var(--color-error-container);
+
+  /* shadcn compatibility aliases (see :root block above for source values) */
+  --color-foreground: var(--color-foreground);
+  --color-secondary-foreground: var(--color-secondary-foreground);
+  --color-muted: var(--color-muted);
+  --color-muted-foreground: var(--color-muted-foreground);
+  --color-accent: var(--color-accent);
+  --color-accent-foreground: var(--color-accent-foreground);
+  --color-destructive: var(--color-destructive);
+  --color-destructive-foreground: var(--color-destructive-foreground);
+  --color-border: var(--color-border);
+  --color-input: var(--color-input);
+  --color-ring: var(--color-ring);
+  --color-popover: var(--color-popover);
+  --color-popover-foreground: var(--color-popover-foreground);
+  --color-card: var(--color-card);
+  --color-card-foreground: var(--color-card-foreground);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-pill: var(--radius-pill);
+
+  --shadow-subtle: var(--shadow-subtle);
+  --shadow-card: var(--shadow-card);
+
+  --sidebar-w-expanded: var(--sidebar-w-expanded);
+  --sidebar-w-collapsed: var(--sidebar-w-collapsed);
+  --topbar-h: var(--topbar-h);
+
+  /* Inter, loaded via <link> in layout.tsx (same approach the Astro apply
+     page uses) rather than next/font, so there's one font-loading strategy
+     across both apps instead of two. */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-on-surface);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
