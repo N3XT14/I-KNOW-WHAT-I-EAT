@@ -3,7 +3,7 @@ import "./globals.css";
 import { TooltipProvider } from "@/components/ui/Tooltip";
 import QueryProvider from "@/components/providers/QueryProvider";
 import BfcacheGuard from "@/components/providers/BfcacheGuard";
-import BottomNav from "@/components/nav/BottomNav";
+import AppFrame from "@/components/providers/AppFrame";
 
 export const metadata: Metadata = {
   title: "I Know What I Eat",
@@ -21,15 +21,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           crossOrigin=""
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-full flex flex-col font-sans">
+      <body className="h-dvh overflow-hidden font-sans md:flex md:items-center md:justify-center md:bg-[var(--color-frame-backdrop)]">
         <QueryProvider>
           <TooltipProvider>
-            <div className="flex min-h-full flex-1 flex-col">{children}</div>
-            <BottomNav />
+            <AppFrame>{children}</AppFrame>
           </TooltipProvider>
         </QueryProvider>
         <BfcacheGuard />

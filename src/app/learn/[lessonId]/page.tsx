@@ -26,9 +26,16 @@ export default function LessonPage() {
   }
 
   useEffect(() => {
+    // localStorage doesn't exist during SSR — this has to happen after
+    // mount, a genuine "read from an external system on mount" case.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshProfiles();
   }, []);
 
+  // Derived directly rather than mirrored into its own state — by the time
+  // activeProfileId is non-null we're already client-side (see effect
+  // above), so this is a plain synchronous localStorage read, not
+  // something that needs its own effect.
   const events: FoodEvent[] = activeProfileId
     ? getFoodEventsForProfile(activeProfileId)
     : [];
@@ -37,7 +44,7 @@ export default function LessonPage() {
 
   if (!lesson) {
     return (
-      <main className="mx-auto flex w-full max-w-md flex-col gap-4 p-6">
+      <main className="mx-auto flex w-full max-w-md flex-col gap-4 p-4 pb-6">
         <p className="text-sm text-[var(--color-on-surface-variant)]">
           That lesson doesn&apos;t exist.
         </p>
@@ -46,7 +53,7 @@ export default function LessonPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-col gap-4 p-6">
+    <main className="mx-auto flex w-full max-w-md flex-col gap-4 p-4 pb-6">
       <header className="flex items-center justify-between">
         <button
           type="button"

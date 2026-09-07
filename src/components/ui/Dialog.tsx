@@ -6,6 +6,7 @@ import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 import Button from "@/components/ui/Button"
+import { useFrameContainer } from "@/components/providers/FrameContainer"
 
 function Dialog({
   ...props
@@ -55,8 +56,17 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
 }) {
+  // Radix's Portal defaults to document.body — a DOM sibling of the phone
+  // frame, not a descendant, so the frame's overflow-hidden/rounded
+  // clipping and its transform-based containing block never applied to
+  // dialogs. Portaling into the frame's own node instead makes a dialog
+  // genuinely confined to the phone shell on desktop. Falls back to the
+  // default (undefined -> document.body) outside AppFrame, or before the
+  // ref has mounted.
+  const frameContainer = useFrameContainer()
+
   return (
-    <DialogPortal data-slot="dialog-portal">
+    <DialogPortal data-slot="dialog-portal" container={frameContainer ?? undefined}>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"

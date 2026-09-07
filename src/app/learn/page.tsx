@@ -23,6 +23,7 @@ export default function LearnPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshProfiles();
   }, []);
 
@@ -35,7 +36,7 @@ export default function LearnPage() {
   const allNutrients = Array.from(new Set(LESSONS.map((l) => l.nutrientFocus)));
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-col gap-4 p-6">
+    <main className="mx-auto flex w-full max-w-md flex-col gap-4 p-4 pb-6">
       <header className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-[var(--color-on-surface)]">

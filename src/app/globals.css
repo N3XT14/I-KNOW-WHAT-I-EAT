@@ -1,48 +1,61 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/*
- * Label Literacy's own palette — forked from the Riva web project's token
- * structure (same variable names, so components/ui/* work unmodified) but
- * with new values. Not tied to theme.dart; this is a separate product.
- * Warm amber (food/energy) as primary instead of clinic teal, keeping the
- * calm/trustworthy surface tones so it still reads credible to parents.
- */
 :root {
-  --color-primary: #d97a2b;
-  --color-primary-dark: #b45f1b;
+  --color-primary: #4f7be0;
+  --color-primary-dark: #3357b0;
   --color-on-primary: #ffffff;
-  --color-primary-container: #fbe6d2;
+  --color-primary-container: #e5eafc;
 
-  --color-secondary: #3f8f6f;
+  --color-secondary: #2f6b4f;
   --color-on-secondary: #ffffff;
 
-  --color-background: #f7f9f9;
+  /* Light blue-tinted white — ties the background to the primary hue
+     without competing with it, and still separates from pure-white
+     cards. */
+  --color-background: #f5f7fd;
   --color-surface: #ffffff;
-  --color-surface-variant: #f0f4f4;
+  --color-surface-variant: #eef1fb;
 
-  --color-on-surface: #1f2a2a;
-  --color-on-surface-variant: #4a5a5a;
+  --color-on-surface: #1c2029;
+  --color-on-surface-variant: #5b6270;
 
-  --color-outline: #d5e0e0;
+  --color-outline: #dbe1f5;
 
-  --color-success: #4caf50;
-  --color-warning: #f2b705;
-  --color-attention: #e57373;
-  --color-info: #4db6ac;
-  --color-error: #ba1a1a;
-  --color-error-container: #fdedec;
+  /* Three-way verdict palette: a label is good, borderline, or high in
+     something — collapsing that into one "primary" badge (as before) lost
+     the distinction the whole app exists to communicate. Left untouched
+     through every round of primary-color changes on purpose — good/high
+     need to keep meaning "safe"/"escalate", not drift with the brand hue. */
+  --color-good: #2f6b4f;
+  --color-good-container: #dcefe0;
+  --color-caution: #a6720a;
+  --color-caution-container: #fbe7bd;
+  --color-high: #ac3b26;
+  --color-high-container: #f7ddd4;
+
+  --color-success: #2f6b4f;
+  --color-warning: #a6720a;
+  --color-attention: #ac3b26;
+  --color-info: #2d6b66;
+  --color-error: #971b1b;
+  --color-error-container: #f7ddd4;
+
+  /* Desktop-only presentation chrome (the area outside the phone frame,
+     see layout.tsx) — plain white with a dark bezel, the way a device
+     mockup on a product page reads. Left as-is: the app itself is meant
+     to be the visual focus, not this backdrop. */
+  --color-frame-backdrop: #ffffff;
+  --color-frame-bezel: #16181d;
 
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 18px;
   --radius-pill: 999px;
 
-  /* Approximates AppShadows.subtleConst / softConst from theme.dart —
-     Flutter's BoxShadow blur/spread doesn't map 1:1 to CSS box-shadow, so
-     these are tuned by eye to read the same, not converted by formula. */
-  --shadow-subtle: 0 2px 6px rgba(31, 42, 42, 0.05), 0 1px 2px rgba(31, 42, 42, 0.04);
-  --shadow-card: 0 8px 20px rgba(31, 42, 42, 0.07), 0 1px 2px rgba(31, 42, 42, 0.05);
+  /* Neutral-cool shadow, matching the cool-toned background. */
+  --shadow-subtle: 0 2px 6px rgba(20, 22, 28, 0.08), 0 1px 2px rgba(20, 22, 28, 0.06);
+  --shadow-card: 0 10px 24px rgba(20, 22, 28, 0.12), 0 2px 4px rgba(20, 22, 28, 0.08);
 
   --space-xs: 4px;
   --space-sm: 8px;
@@ -83,13 +96,6 @@
   --color-card-foreground: var(--color-on-surface);
 }
 
-/* This app has no dark theme designed yet. Tailwind v4's default `dark:`
-   variant follows the OS `prefers-color-scheme` media query, and several
-   generated shadcn components (Select, Switch, Tabs) ship `dark:` classes.
-   Without this line, any user with a dark-mode OS/browser would silently
-   get shadcn's unthemed dark defaults on just those three components while
-   the rest of the app stayed light. Scoping `dark:` to a `.dark` class we
-   never apply neutralizes that until real dark-theme tokens exist. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
@@ -105,6 +111,14 @@
   --color-on-surface: var(--color-on-surface);
   --color-on-surface-variant: var(--color-on-surface-variant);
   --color-outline: var(--color-outline);
+  --color-frame-backdrop: var(--color-frame-backdrop);
+  --color-frame-bezel: var(--color-frame-bezel);
+  --color-good: var(--color-good);
+  --color-good-container: var(--color-good-container);
+  --color-caution: var(--color-caution);
+  --color-caution-container: var(--color-caution-container);
+  --color-high: var(--color-high);
+  --color-high-container: var(--color-high-container);
   --color-success: var(--color-success);
   --color-warning: var(--color-warning);
   --color-attention: var(--color-attention);
@@ -146,6 +160,11 @@
      across both apps instead of two. */
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     Roboto, sans-serif;
+  /* Space Grotesk carries the "stamp"/numeric identity — verdicts,
+     percentages, and streak counts get set in this face so the numbers
+     that actually drive the product read as engineered data points, not
+     body copy that happens to be bold. Body text stays in Inter. */
+  --font-display: "Space Grotesk", var(--font-sans);
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 
@@ -153,5 +172,6 @@ body {
   background: var(--color-background);
   color: var(--color-on-surface);
   font-family: var(--font-sans);
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }

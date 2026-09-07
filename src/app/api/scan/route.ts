@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { LabelExtraction, ScanApiResponse } from "@/types/labelExtraction";
 import { getCachedExtraction, setCachedExtraction } from "@/lib/scanCache";
 
-
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
 const MODEL = "gemini-3.6-flash";
 
 const SYSTEM_PROMPT = `You read real Indian packaged-food labels for a
@@ -23,6 +21,10 @@ Rules:
 - headline.drivingFact must translate at least one number into something
   concrete and relatable (teaspoons of sugar, % of a child's daily limit,
   etc) — never just repeat the printed number back.
+- headline.verdict is a short tag, 2-5 words (e.g. "High in sugar",
+  "Reasonably balanced", "Watch the saturated fat") — never a full
+  sentence and never a restatement of drivingFact. It's rendered as a
+  small pill/badge in the UI, so long text breaks the layout.
 - Keep every "note" and the headline in plain, warm, non-alarming language.
   This is for a worried parent, not a lab report.`;
 
@@ -61,7 +63,11 @@ const RESPONSE_SCHEMA = {
     headline: {
       type: "OBJECT",
       properties: {
-        verdict: { type: "STRING" },
+        verdict: {
+          type: "STRING",
+          description:
+            "Short tag, 2-5 words, e.g. 'High in sugar' or 'Reasonably balanced'. Never a full sentence.",
+        },
         drivingFact: { type: "STRING" },
       },
       required: ["verdict", "drivingFact"],

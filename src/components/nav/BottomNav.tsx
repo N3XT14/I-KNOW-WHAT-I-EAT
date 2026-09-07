@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ScanLine, GraduationCap } from "lucide-react";
+import { Home, ScanLine, GraduationCap, History } from "lucide-react";
 
 const TABS = [
   { href: "/", label: "Home", icon: Home },
   { href: "/scan", label: "Scan", icon: ScanLine },
   { href: "/learn", label: "Learn", icon: GraduationCap },
+  { href: "/history", label: "History", icon: History },
 ];
 
 export default function BottomNav() {
@@ -15,7 +16,7 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="sticky bottom-0 z-10 flex border-t border-[var(--color-outline)] bg-[var(--color-surface)]"
+      className="flex shrink-0 border-t border-[var(--color-outline)] bg-[var(--color-surface)]"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       {TABS.map(({ href, label, icon: Icon }) => {

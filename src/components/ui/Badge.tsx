@@ -7,6 +7,9 @@ const TONE_CLASSES = {
   error: "bg-[var(--color-error-container)] text-[var(--color-error)]",
   info: "bg-[var(--color-info)]/15 text-[#2d6b66]",
   attention: "bg-[var(--color-attention)]/15 text-[var(--color-attention)]",
+  good: "bg-[var(--color-good-container)] text-[var(--color-good)]",
+  caution: "bg-[var(--color-caution-container)] text-[var(--color-caution)]",
+  high: "bg-[var(--color-high-container)] text-[var(--color-high)]",
 } as const;
 
 export default function Badge({
