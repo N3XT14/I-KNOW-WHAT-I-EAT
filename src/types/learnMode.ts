@@ -7,7 +7,7 @@
 // hardcoded numbers, so swapping in sourced WHO/ICMR-NIN figures later is a
 // data change, not a rewrite of this file.
 
-import type { AgeBand } from "@/types/profile";
+import type { AgeBand, Sex } from "@/types/profile";
 import { limitFor, type NutrientKey, type NutrientLimit } from "@/types/nutrientLimits";
 import type { LabelExtraction } from "@/types/labelExtraction";
 import { nutrientAmountFor } from "@/lib/nutrientMatching";
@@ -67,19 +67,18 @@ export type NutrientEvaluation = {
 };
 
 // The function Learn Mode's applied challenge actually calls: given a
-// scanned label, a nutrient, a profile's age band, and how much of it they
-// had, returns the full picture — or null if either the label doesn't
-// print that nutrient (see nutrientAmountFor) or there's no limit defined
-// for that age band (shouldn't happen once NUTRIENT_LIMITS covers every
-// band, but stays a possibility while the data is still a stub).
+// scanned label, a nutrient, a profile's age band (and sex, if they've
+// set one — see types/nutrientLimits.ts for what that unlocks), and how
+// much of it they had, returns the full picture — or null if the label
+// doesn't print that nutrient (see nutrientAmountFor).
 export function evaluateNutrientForConsumption(
   extraction: LabelExtraction,
   nutrient: NutrientKey,
   ageBand: AgeBand,
   portionMultiplier: number,
+  sex?: Sex,
 ): NutrientEvaluation | null {
-  const limit = limitFor(ageBand, nutrient);
-  if (!limit) return null;
+  const limit = limitFor(ageBand, nutrient, sex);
 
   const perServing = nutrientAmountFor(extraction.nutrients, nutrient, limit.unit);
   if (perServing === null) return null;

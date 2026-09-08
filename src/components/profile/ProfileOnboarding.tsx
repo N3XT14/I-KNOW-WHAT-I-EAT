@@ -3,12 +3,20 @@
 import { useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import { createProfile } from "@/types/profile";
+import { createProfile, type Sex } from "@/types/profile";
 import { saveProfile } from "@/lib/profiles";
 
+// Shown once on first launch (no profiles yet), and again any time someone
+// taps "Add family member" from the profile switcher. Name + DOB is the
+// entire required signup flow, on purpose (see the earlier decision: fast
+// profile creation instead of a separate guest mode). Sex is asked last
+// and is optional — skipping it just means this profile's nutrient limits
+// stay sex-averaged (exactly what every profile got before this field
+// existed) instead of the real ICMR-NIN figure for their sex.
 export default function ProfileOnboarding({ onDone }: { onDone: () => void }) {
   const [name, setName] = useState("");
   const [dob, setDob] = useState("");
+  const [sex, setSex] = useState<Sex | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -30,7 +38,7 @@ export default function ProfileOnboarding({ onDone }: { onDone: () => void }) {
       return;
     }
 
-    saveProfile(createProfile(trimmedName, dob));
+    saveProfile(createProfile(trimmedName, dob, sex ?? undefined));
     onDone();
   }
 
@@ -73,6 +81,28 @@ export default function ProfileOnboarding({ onDone }: { onDone: () => void }) {
             className="rounded-[var(--radius-md)] border border-[var(--color-outline)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-on-surface)] outline-none focus:border-[var(--color-primary)]"
           />
         </label>
+
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-[var(--color-on-surface-variant)]">
+            Sex (optional — sharpens their daily limits)
+          </span>
+          <div className="flex gap-2">
+            {(["female", "male"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setSex((prev) => (prev === option ? null : option))}
+                className={`flex-1 rounded-[var(--radius-md)] border px-3 py-2 text-sm capitalize transition-colors ${
+                  sex === option
+                    ? "border-[var(--color-primary)] bg-[var(--color-primary-container)] text-[var(--color-primary-dark)]"
+                    : "border-[var(--color-outline)] text-[var(--color-on-surface)]"
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {error && <p className="text-xs text-[var(--color-error)]">{error}</p>}
 

@@ -27,7 +27,3 @@ export type LabelExtraction = {
     drivingFact: string; // "12g sugar — about 3 teaspoons" — the "why"
   };
 };
-
-export type ScanApiResponse =
-  | { ok: true; extraction: LabelExtraction }
-  | { ok: false; error: string };

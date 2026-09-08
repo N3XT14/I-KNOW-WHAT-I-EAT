@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import type { LabelExtraction } from "@/types/labelExtraction";
+import type { FoodItem } from "@/types/foodItem";
 import type { Profile } from "@/types/profile";
 import { createFoodEvent, addConsumption, type FoodEvent } from "@/types/foodEvent";
 import { saveFoodEvent, updateFoodEvent } from "@/lib/foodEvents";
@@ -23,12 +23,12 @@ function formatPortion(value: number): string {
 }
 
 export default function LogConsumptionPanel({
-  extraction,
+  item,
   profiles,
   event,
   onLogged,
 }: {
-  extraction: LabelExtraction;
+  item: FoodItem;
   profiles: Profile[];
   // The FoodEvent this scan has produced so far, or null if nothing's been
   // logged yet. Appending only: a profile already present here can't be
@@ -74,7 +74,7 @@ export default function LogConsumptionPanel({
       updateFoodEvent(updated);
     } else {
       const [firstId, ...restIds] = selectedIds;
-      updated = createFoodEvent(extraction, {
+      updated = createFoodEvent(item, {
         profileId: firstId,
         portionMultiplier: portions[firstId],
       });

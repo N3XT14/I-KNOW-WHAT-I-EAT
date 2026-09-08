@@ -7,8 +7,10 @@ import Badge from "@/components/ui/Badge";
 import ProfileSwitcher from "@/components/profile/ProfileSwitcher";
 import { getProfiles, getActiveProfileId } from "@/lib/profiles";
 import { getFoodEventsForProfile } from "@/lib/foodEvents";
+import { getMeal } from "@/lib/meals";
 import type { FoodEvent } from "@/types/foodEvent";
 import type { Profile } from "@/types/profile";
+import { isSourced, itemHasFlag, itemHeadline, itemTitle } from "@/types/foodItem";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -148,7 +150,10 @@ export default function HistoryPage() {
                     const consumption = event.consumptions.find(
                       (c) => c.profileId === activeProfile.id,
                     );
-                    const hasMisleadingClaim = event.extraction.claims.some((c) => c.isMisleading);
+                    const headline = itemHeadline(event.item);
+                    const flagged = itemHasFlag(event.item);
+                    const sourced = isSourced(event.item);
+                    const meal = event.mealId ? getMeal(event.mealId) : null;
                     return (
                       <Card key={event.id} className="flex flex-col gap-2 p-4">
                         {/* Name/time on one row, badge on its own row below —
@@ -158,18 +163,26 @@ export default function HistoryPage() {
                             squeezing the timestamp into a sliver. */}
                         <div className="flex items-start justify-between gap-3">
                           <p className="min-w-0 truncate text-sm font-semibold text-[var(--color-on-surface)]">
-                            {event.extraction.productName ?? "Scanned label"}
+                            {itemTitle(event.item) ?? (sourced ? "Scanned label" : "Scanned food")}
                           </p>
                           <p className="shrink-0 text-xs text-[var(--color-on-surface-variant)]">
                             {timeLabel(event.scannedAt)}
                             {consumption ? ` · ${consumption.portionMultiplier} svg` : ""}
                           </p>
                         </div>
-                        <Badge tone={hasMisleadingClaim ? "high" : "good"} className="w-fit">
-                          {event.extraction.headline.verdict}
-                        </Badge>
+                        {meal && (
+                          <Badge tone="neutral" className="w-fit">
+                            Part of {meal.label ?? `a meal · ${timeLabel(meal.loggedAt)}`}
+                          </Badge>
+                        )}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge tone={flagged ? "high" : "good"}>{headline.verdict}</Badge>
+                          {!sourced && (
+                            <Badge tone="neutral">Estimated · no label</Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-[var(--color-on-surface-variant)]">
-                          {event.extraction.headline.drivingFact}
+                          {headline.drivingFact}
                         </p>
                       </Card>
                     );

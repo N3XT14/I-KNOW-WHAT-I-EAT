@@ -42,3 +42,17 @@ export function getFoodEventsForProfile(profileId: string): FoodEvent[] {
     e.consumptions.some((c) => c.profileId === profileId),
   );
 }
+
+export function getFoodEvent(id: string): FoodEvent | null {
+  return getFoodEvents().find((e) => e.id === id) ?? null;
+}
+
+// Looks up several events by id at once, preserving the given order and
+// silently dropping any id that no longer resolves (e.g. cleared
+// localStorage) — used to join a Meal's foodEventIds back to real events.
+export function getFoodEventsByIds(ids: string[]): FoodEvent[] {
+  const all = getFoodEvents();
+  return ids
+    .map((id) => all.find((e) => e.id === id))
+    .filter((e): e is FoodEvent => e !== undefined);
+}

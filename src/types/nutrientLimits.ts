@@ -26,11 +26,16 @@
 // MODELING DECISIONS (mine, not sourced — flagged so they're easy to
 // revisit, not buried as if they were facts):
 //
-//   1. Profile has no sex field (DOB only — see types/profile.ts), but
-//      ICMR-NIN splits energy requirements by sex from age 10 up. Each
-//      band below uses the average of the boys/girls (or men/women)
-//      energy figure for that band. If a sex field gets added to Profile
-//      later, this can split into two rows per band instead of averaging.
+//   1. [Superseded — Profile now has an optional `sex` field, see
+//      types/profile.ts.] The energy table below is now genuinely
+//      per-sex where ICMR-NIN itself splits it (age 10+). Bands where
+//      ICMR-NIN publishes one figure for both sexes (1-3, 4-6, 7-9) stay
+//      that way — that's the primary source, not an approximation. When
+//      no `sex` is passed (profile hasn't set one), every function below
+//      falls back to the average of the two sex-specific figures, which
+//      is byte-for-byte the number every profile got before this field
+//      existed — so this is a strict precision upgrade, nothing regresses
+//      for a profile that skips the (optional) sex question.
 //
 //   2. WHO states sugar/sat-fat/sodium as %-of-energy or scaled-off-adult
 //      rules, not a fixed table — so each row here is *computed* from the
@@ -59,7 +64,7 @@
 //      avoid touching lessons.ts/Challenge.tsx before the screen-design
 //      pass.
 
-import type { AgeBand } from "@/types/profile";
+import type { AgeBand, Sex } from "@/types/profile";
 
 export type NutrientKey = "sugar" | "sodium" | "saturatedFat";
 
@@ -80,19 +85,32 @@ export type NutrientLimit = {
 };
 
 // ICMR-NIN 2020 energy requirement per age band, kcal/day — Table 1a,
-// https://www.nin.res.in/rdabook/brief_note.pdf. Sex-averaged per
-// modeling decision #1 above. "adult" uses sedentary men/women, matching
-// the same activity-level assumption FSSAI's 2000kcal label reference
-// implicitly makes.
-const ENERGY_KCAL_PER_DAY: Record<AgeBand, number> = {
-  "1-3": 1070,
-  "4-6": 1360,
-  "7-9": 1700,
-  "10-12": Math.round((2220 + 2060) / 2), // boys 2220, girls 2060
-  "13-15": Math.round((2860 + 2400) / 2), // boys 2860, girls 2400
-  "16-18": Math.round((3320 + 2500) / 2), // boys 3320, girls 2500
-  adult: Math.round((2110 + 1660) / 2), // men sedentary 2110, women sedentary 1660
+// https://www.nin.res.in/rdabook/brief_note.pdf. ICMR-NIN only splits
+// this by sex from age 10 up; the three youngest bands publish one figure
+// for both, so male/female are deliberately equal there (that equality
+// IS the primary source, not a stand-in for a missing split). "adult"
+// uses sedentary men/women, matching the same activity-level assumption
+// FSSAI's 2000kcal label reference implicitly makes.
+const ENERGY_KCAL_PER_DAY_BY_SEX: Record<AgeBand, { male: number; female: number }> = {
+  "1-3": { male: 1070, female: 1070 },
+  "4-6": { male: 1360, female: 1360 },
+  "7-9": { male: 1700, female: 1700 },
+  "10-12": { male: 2220, female: 2060 },
+  "13-15": { male: 2860, female: 2400 },
+  "16-18": { male: 3320, female: 2500 },
+  adult: { male: 2110, female: 1660 },
 };
+
+// No `sex` -> the average of the two sex-specific figures, i.e. exactly
+// the number this file used before the sex field existed. A profile that
+// skips the (optional) sex question loses nothing; one that sets it gets
+// the real ICMR-NIN figure for their actual sex instead of an average.
+function energyFor(ageBand: AgeBand, sex?: Sex): number {
+  const { male, female } = ENERGY_KCAL_PER_DAY_BY_SEX[ageBand];
+  if (sex === "male") return male;
+  if (sex === "female") return female;
+  return Math.round((male + female) / 2);
+}
 
 // WHO %-of-energy rules — see modeling decision #2-3 above for why sugar
 // uses the 5% figure specifically.
@@ -107,8 +125,8 @@ const SUGAR_SOURCE = "WHO (free sugars <5% of energy) scaled to ICMR-NIN 2020 en
 const SAT_FAT_SOURCE = "WHO (saturated fat <=10% of energy) scaled to ICMR-NIN 2020 energy requirement for age";
 const SODIUM_SOURCE = "WHO (<2000mg/day adult; scaled down for children per energy need) · ICMR-NIN 2020 energy requirement for age";
 
-function sugarLimitFor(ageBand: AgeBand): NutrientLimit {
-  const energy = ENERGY_KCAL_PER_DAY[ageBand];
+function sugarLimitFor(ageBand: AgeBand, sex?: Sex): NutrientLimit {
+  const energy = energyFor(ageBand, sex);
   const limit = Math.round((energy * SUGAR_ENERGY_FRACTION) / KCAL_PER_G_SUGAR);
   return {
     ageBand,
@@ -122,8 +140,8 @@ function sugarLimitFor(ageBand: AgeBand): NutrientLimit {
   };
 }
 
-function saturatedFatLimitFor(ageBand: AgeBand): NutrientLimit {
-  const energy = ENERGY_KCAL_PER_DAY[ageBand];
+function saturatedFatLimitFor(ageBand: AgeBand, sex?: Sex): NutrientLimit {
+  const energy = energyFor(ageBand, sex);
   const limit = Math.round((energy * SAT_FAT_ENERGY_FRACTION) / KCAL_PER_G_SAT_FAT);
   return {
     ageBand,
@@ -137,7 +155,7 @@ function saturatedFatLimitFor(ageBand: AgeBand): NutrientLimit {
   };
 }
 
-function sodiumLimitFor(ageBand: AgeBand): NutrientLimit {
+function sodiumLimitFor(ageBand: AgeBand, sex?: Sex): NutrientLimit {
   // WHO states 2000mg as a direct adult figure, not something itself
   // derived by scaling off a 2000kcal reference — the "scale down from
   // the adult ceiling" instruction applies only to children relative to
@@ -148,7 +166,7 @@ function sodiumLimitFor(ageBand: AgeBand): NutrientLimit {
   if (ageBand === "adult") {
     limit = ADULT_SODIUM_CEILING_MG;
   } else {
-    const energy = ENERGY_KCAL_PER_DAY[ageBand];
+    const energy = energyFor(ageBand, sex);
     const scaled = Math.round(ADULT_SODIUM_CEILING_MG * (energy / 2000));
     limit = Math.min(scaled, ADULT_SODIUM_CEILING_MG);
   }
@@ -166,10 +184,13 @@ function sodiumLimitFor(ageBand: AgeBand): NutrientLimit {
 
 const AGE_BANDS: AgeBand[] = ["1-3", "4-6", "7-9", "10-12", "13-15", "16-18", "adult"];
 
+// Sex-averaged table, kept for any caller that doesn't have a specific
+// profile's sex on hand (or explicitly wants the pre-sex-field numbers).
+// Byte-for-byte what this file returned before the sex field existed.
 export const NUTRIENT_LIMITS: NutrientLimit[] = [
-  ...AGE_BANDS.map(sugarLimitFor),
-  ...AGE_BANDS.map(sodiumLimitFor),
-  ...AGE_BANDS.map(saturatedFatLimitFor),
+  ...AGE_BANDS.map((b) => sugarLimitFor(b)),
+  ...AGE_BANDS.map((b) => sodiumLimitFor(b)),
+  ...AGE_BANDS.map((b) => saturatedFatLimitFor(b)),
 ];
 
 // FSSAI's fixed label-reference basis — Reg 5(3)(b) of the FSS (Labelling
@@ -189,6 +210,16 @@ export const FSSAI_LABEL_BASIS = {
   source: "FSSAI Food Safety and Standards (Labelling and Display) Regulations, 2020, Regulation 5(3)(b)",
 } as const;
 
-export function limitFor(ageBand: AgeBand, nutrient: NutrientKey): NutrientLimit | undefined {
-  return NUTRIENT_LIMITS.find((l) => l.ageBand === ageBand && l.nutrient === nutrient);
+// `sex` is optional and threaded all the way from Profile — pass it
+// whenever it's available (see types/learnMode.ts) to get the real
+// ICMR-NIN figure for that band/sex instead of the sex-averaged fallback.
+export function limitFor(ageBand: AgeBand, nutrient: NutrientKey, sex?: Sex): NutrientLimit {
+  if (nutrient === "sugar") return sugarLimitFor(ageBand, sex);
+  if (nutrient === "saturatedFat") return saturatedFatLimitFor(ageBand, sex);
+  return sodiumLimitFor(ageBand, sex);
 }
+
+// The nutrients Learn Mode / Instant Check / the profile summary track —
+// shared here so every screen that needs "all tracked nutrients" pulls
+// from one list instead of each redefining it locally and risking drift.
+export const TRACKED_NUTRIENT_KEYS: NutrientKey[] = ["sugar", "sodium", "saturatedFat"];

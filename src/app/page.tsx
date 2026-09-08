@@ -5,6 +5,7 @@ import Link from "next/link";
 import Button from "@/components/ui/Button";
 import ProfileOnboarding from "@/components/profile/ProfileOnboarding";
 import ProfileSwitcher from "@/components/profile/ProfileSwitcher";
+import ProfileSummary from "@/components/profile/ProfileSummary";
 import { getProfiles, getActiveProfileId } from "@/lib/profiles";
 import type { Profile } from "@/types/profile";
 
@@ -20,6 +21,10 @@ export default function Home() {
   }
 
   useEffect(() => {
+    // localStorage doesn't exist during SSR, so this has to happen after
+    // mount — a genuine "read from an external system on mount" case, not
+    // a derived-state anti-pattern.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, []);
 
@@ -45,6 +50,8 @@ export default function Home() {
     );
   }
 
+  const activeProfile = profiles.find((p) => p.id === activeProfileId) ?? null;
+
   return (
     <main className="flex flex-1 flex-col">
       <header className="flex items-center justify-end p-4">
@@ -66,6 +73,15 @@ export default function Home() {
         <Link href="/scan">
           <Button>Scan a label</Button>
         </Link>
+
+        {/* Renders nothing until this profile has at least one logged
+            scan — a brand-new profile still just gets the plain CTA
+            above, not an empty/zeroed-out summary card. */}
+        {activeProfile && (
+          <div className="mt-2 w-full max-w-sm">
+            <ProfileSummary profile={activeProfile} />
+          </div>
+        )}
       </div>
     </main>
   );

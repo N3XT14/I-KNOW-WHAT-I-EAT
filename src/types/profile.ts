@@ -40,18 +40,22 @@ export function currentAgeBand(dob: string): AgeBand {
   return ageBandFor(calculateAge(dob));
 }
 
+export type Sex = "male" | "female";
+
 export type Profile = {
   id: string;
   name: string;
   dob: string; // ISO date, "YYYY-MM-DD" — the only thing captured at signup
   createdAt: string; // ISO timestamp
+  sex?: Sex;
 };
 
-export function createProfile(name: string, dob: string): Profile {
+export function createProfile(name: string, dob: string, sex?: Sex): Profile {
   return {
     id: crypto.randomUUID(),
     name,
     dob,
     createdAt: new Date().toISOString(),
+    ...(sex ? { sex } : {}),
   };
 }

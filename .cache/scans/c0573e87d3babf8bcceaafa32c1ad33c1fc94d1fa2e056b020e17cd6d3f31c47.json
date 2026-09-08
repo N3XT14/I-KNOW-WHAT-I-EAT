@@ -1,41 +1,58 @@
 {
-  "productName": "Prepared Kidney Beans",
-  "servingSize": "1/2 cup (130g)",
-  "nutrients": [
-    {
-      "name": "Total Fat",
-      "amount": "0g",
-      "percentDailyValue": 0
-    },
-    {
-      "name": "Saturated Fat",
-      "amount": "0g",
-      "percentDailyValue": 0
-    },
-    {
-      "name": "Total Carbohydrate",
-      "amount": "21g",
-      "percentDailyValue": 8
-    },
-    {
-      "name": "Added Sugars",
-      "amount": "1g",
-      "percentDailyValue": 2
-    },
-    {
-      "name": "Calcium",
-      "amount": "50mg",
-      "percentDailyValue": 4
-    },
-    {
-      "name": "Potassium",
-      "amount": "430mg",
-      "percentDailyValue": 10
+  "ok": true,
+  "item": {
+    "kind": "sourced",
+    "extraction": {
+      "productName": "Great Value Canned Kidney Beans",
+      "servingSize": "1/2 cup (130g)",
+      "nutrients": [
+        {
+          "name": "Calories",
+          "amount": "120",
+          "percentDailyValue": null
+        },
+        {
+          "name": "Total Fat",
+          "amount": "0g",
+          "percentDailyValue": 0
+        },
+        {
+          "name": "Sodium",
+          "amount": "250mg",
+          "percentDailyValue": 11
+        },
+        {
+          "name": "Total Carbohydrate",
+          "amount": "21g",
+          "percentDailyValue": 8
+        },
+        {
+          "name": "Dietary Fiber",
+          "amount": "5g",
+          "percentDailyValue": 18
+        },
+        {
+          "name": "Added Sugars",
+          "amount": "1g",
+          "percentDailyValue": 2
+        },
+        {
+          "name": "Calcium",
+          "amount": "50mg",
+          "percentDailyValue": 4
+        },
+        {
+          "name": "Potassium",
+          "amount": "430mg",
+          "percentDailyValue": 10
+        }
+      ],
+      "claims": [],
+      "headline": {
+        "verdict": "Good source of fiber",
+        "drivingFact": "A single 1/2 cup serving provides 18% of the daily fiber requirement with modest sodium."
+      }
     }
-  ],
-  "claims": [],
-  "headline": {
-    "verdict": "A wholesome, high-fiber staple with very low added sugar.",
-    "drivingFact": "A single half-cup serving delivers nearly a fifth (18%) of your daily fiber needs with less than a quarter teaspoon of added sugar."
-  }
+  },
+  "multipleItemsNote": null
 }

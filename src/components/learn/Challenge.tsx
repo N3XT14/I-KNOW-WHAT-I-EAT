@@ -6,6 +6,7 @@ import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import { currentAgeBand, type Profile } from "@/types/profile";
 import type { FoodEvent } from "@/types/foodEvent";
+import { isSourced } from "@/types/foodItem";
 import { evaluateNutrientForConsumption } from "@/types/learnMode";
 import type { NutrientKey } from "@/types/nutrientLimits";
 import { createChallengeAttempt } from "@/types/challengeAttempt";
@@ -40,15 +41,21 @@ export default function Challenge({
 }) {
   const attempt = (() => {
     const ageBand = currentAgeBand(profile.dob);
-    const sorted = [...events].sort((a, b) => b.scannedAt.localeCompare(a.scannedAt));
+    // Challenges run against real sourced numbers only — an estimated
+    // (home-cooked/unlabeled) read has no %RDA to quiz against, see
+    // types/foodItem.ts.
+    const sourcedEvents = events.filter((e) => isSourced(e.item));
+    const sorted = [...sourcedEvents].sort((a, b) => b.scannedAt.localeCompare(a.scannedAt));
     for (const event of sorted) {
       const consumption = event.consumptions.find((c) => c.profileId === profile.id);
       if (!consumption) continue;
+      if (!isSourced(event.item)) continue;
       const evaluation = evaluateNutrientForConsumption(
-        event.extraction,
+        event.item.extraction,
         nutrient,
         ageBand,
         consumption.portionMultiplier,
+        profile.sex,
       );
       if (evaluation) return { event, evaluation, consumption };
     }
@@ -93,7 +100,7 @@ export default function Challenge({
     <Card className="flex flex-col gap-4 p-4">
       <div>
         <h3 className="text-sm font-semibold text-[var(--color-on-surface)]">
-          {event.extraction.productName ?? "That food you logged"}
+          {event.item.extraction.productName ?? "That food you logged"}
         </h3>
         <p className="mt-1 text-sm text-[var(--color-on-surface-variant)]">
           How much of {profile.name}&apos;s daily {nutrientLabel(nutrient)}{" "}
