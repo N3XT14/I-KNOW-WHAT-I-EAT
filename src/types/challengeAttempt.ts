@@ -13,10 +13,20 @@
 // append-only log of learning activity, keyed by day for streaks and by
 // nutrient for mastery — neither of which FoodEvent's "what was scanned"
 // or Profile's "who is this" shape fits naturally.
+//
+// A discriminated union on `kind` rather than one flat shape — different
+// challenge formats (rank, odd-one-out, recall-vs-decoy) capture
+// genuinely different guess data, and streaks.ts / masteryByNutrient only
+// ever read the shared base fields (nutrient, correct, attemptedAt), so
+// widening this to a union doesn't touch that math at all. See
+// lib/challengeAttempts.ts for how attempts saved before this union
+// existed (all bucket-guess) are read back safely.
 
 import type { NutrientKey } from "@/types/nutrientLimits";
 
-export type ChallengeAttempt = {
+export type ChallengeKind = "bucket-guess" | "rank" | "odd-one-out" | "recall-decoy";
+
+type BaseAttempt = {
   id: string;
   profileId: string;
   lessonId: string;
@@ -24,19 +34,61 @@ export type ChallengeAttempt = {
   // LESSONS -> nutrientFocus, so mastery-by-nutrient stays correct even
   // if a lesson's nutrientFocus is ever edited or a lesson is removed.
   nutrient: NutrientKey;
-  foodEventId: string;
-  guessedBucketIndex: number;
-  actualBucketIndex: number;
   correct: boolean;
   attemptedAt: string; // ISO timestamp — local calendar day is derived from this for streaks
 };
 
-export function createChallengeAttempt(
-  attempt: Omit<ChallengeAttempt, "id" | "attemptedAt">,
-): ChallengeAttempt {
+// The original format: guess which %-of-daily-limit bucket a single
+// logged food fell into.
+export type BucketGuessAttempt = BaseAttempt & {
+  kind: "bucket-guess";
+  foodEventId: string;
+  guessedBucketIndex: number;
+  actualBucketIndex: number;
+};
+
+// Tap three real logged foods in order, highest nutrient first.
+export type RankAttempt = BaseAttempt & {
+  kind: "rank";
+  foodEventIds: string[]; // the three shown, in display (shuffled) order
+  guessedOrder: string[]; // foodEventIds in the order tapped
+  actualOrder: string[]; // foodEventIds in the correct order
+};
+
+// Three real logged foods, one a clear outlier on the nutrient — spot it.
+export type OddOneOutAttempt = BaseAttempt & {
+  kind: "odd-one-out";
+  foodEventIds: string[];
+  guessedOutlierId: string;
+  actualOutlierId: string;
+};
+
+// A real logged food vs. a similar-sounding item from the seed library
+// that was never actually scanned — tests recall of what was really
+// eaten, not nutrition knowledge.
+export type RecallDecoyAttempt = BaseAttempt & {
+  kind: "recall-decoy";
+  realFoodEventId: string;
+  decoyProductName: string;
+  guessedId: string; // whichever option (real event id or decoy id) was tapped
+};
+
+export type ChallengeAttempt =
+  | BucketGuessAttempt
+  | RankAttempt
+  | OddOneOutAttempt
+  | RecallDecoyAttempt;
+
+// Generic over the specific member so callers get full type-checking on
+// the kind-specific fields — `Omit` over a union collapses to only the
+// shared base fields, so a plain (non-generic) signature here would
+// silently lose that checking.
+export function createChallengeAttempt<T extends ChallengeAttempt>(
+  attempt: Omit<T, "id" | "attemptedAt">,
+): T {
   return {
     ...attempt,
     id: crypto.randomUUID(),
     attemptedAt: new Date().toISOString(),
-  };
+  } as T;
 }

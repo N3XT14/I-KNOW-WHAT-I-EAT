@@ -9,6 +9,8 @@ import ProfileSwitcher from "@/components/profile/ProfileSwitcher";
 import { LESSONS } from "@/lib/lessons";
 import { getProfiles, getActiveProfileId } from "@/lib/profiles";
 import { getChallengeAttemptsForProfile } from "@/lib/challengeAttempts";
+import { getFoodEventsForProfile } from "@/lib/foodEvents";
+import TutorTip from "@/components/learn/TutorTip";
 import { currentStreak, masteryByNutrient } from "@/lib/streaks";
 import { nutrientLabel } from "@/lib/nutrientLabels";
 import type { Profile } from "@/types/profile";
@@ -29,6 +31,7 @@ export default function LearnPage() {
 
   const activeProfile = profiles.find((p) => p.id === activeProfileId) ?? null;
   const attempts = activeProfileId ? getChallengeAttemptsForProfile(activeProfileId) : [];
+  const events = activeProfileId ? getFoodEventsForProfile(activeProfileId) : [];
   const streak = currentStreak(attempts);
   const mastery = masteryByNutrient(attempts);
   // Every nutrient a lesson exists for, not just ones already attempted —
@@ -89,6 +92,10 @@ export default function LearnPage() {
             })}
           </ul>
         </Card>
+      )}
+
+      {activeProfile && (
+        <TutorTip profile={activeProfile} events={events} mastery={mastery} />
       )}
 
       <div className="flex flex-col gap-3">

@@ -87,6 +87,7 @@ export default function LessonPage() {
         </h2>
         {activeProfile ? (
           <Challenge
+            key={`${lesson.id}:${activeProfile.id}`}
             nutrient={lesson.nutrientFocus}
             lessonId={lesson.id}
             profile={activeProfile}
