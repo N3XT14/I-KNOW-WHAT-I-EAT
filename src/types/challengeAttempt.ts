@@ -73,11 +73,25 @@ export type RecallDecoyAttempt = BaseAttempt & {
   guessedId: string; // whichever option (real event id or decoy id) was tapped
 };
 
+// One shared kind for every generated-block challenge (quiz-mc,
+// comparison, bar-vs-limit, ranked-list, decoy, spot-the-trick) — they
+// all reduce to "guessed X, was it right", and streaks/mastery only ever
+// read the shared base fields, so a kind-per-block-type union like the
+// original four formats have isn't worth the extra code here. "story"
+// and "matching" have no single right/wrong answer, so they're never
+// logged as attempts.
+export type GeneratedAttempt = BaseAttempt & {
+  kind: "generated";
+  blockKind: string;
+  blockId: string;
+};
+
 export type ChallengeAttempt =
   | BucketGuessAttempt
   | RankAttempt
   | OddOneOutAttempt
-  | RecallDecoyAttempt;
+  | RecallDecoyAttempt
+  | GeneratedAttempt;
 
 // Generic over the specific member so callers get full type-checking on
 // the kind-specific fields — `Omit` over a union collapses to only the

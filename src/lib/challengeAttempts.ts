@@ -63,6 +63,8 @@ function itemIdsForAttempt(a: ChallengeAttempt): string[] {
     case "rank":
     case "odd-one-out":
       return a.foodEventIds;
+    case "generated":
+      return [a.blockId];
   }
 }
 

@@ -75,21 +75,6 @@ export function eligibleFoodsForNutrient(
   return results;
 }
 
-// Picks 3 eligible foods for the rank challenge. `avoidIds`, if given, is
-// the id set last shown for this lesson+profile (see
-// lib/challengeHistory.ts) — retries the shuffle a handful of times to
-// avoid exactly repeating it when the pool is large enough to offer a
-// different trio. With eligible.length <= 3 there's only one possible
-// trio, so no amount of retrying can avoid a repeat.
-export function pickRankTriple(eligible: EligibleFood[], avoidIds?: string[] | null): EligibleFood[] {
-  if (eligible.length <= 3) return shuffled(eligible).slice(0, 3);
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const picked = shuffled(eligible).slice(0, 3);
-    if (!sameIdSet(picked.map((p) => p.event.id), avoidIds)) return picked;
-  }
-  return shuffled(eligible).slice(0, 3);
-}
-
 // Picks a triple for "spot the outlier": one food whose percentOfLimit is
 // clearly separated from the other two, which sit close together —
 // rather than three random picks that might all land close in value and
