@@ -4,7 +4,7 @@ import type { LearnContentBlock, LearnContentSequence } from "@/types/learnConte
 import { isChallengeBlock } from "@/types/learnContent";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const MODEL = "gemini-3.6-flash";
+const MODEL = "gemini-3.7-flash";
 
 const SYSTEM_PROMPT = `You write short Learn Mode content for a food-label
 literacy app aimed at parents and kids in India. You will be given a
@@ -14,12 +14,18 @@ and claims already present in that packet. Never invent a gram amount, a
 percentage, a food name, or a claim that isn't in the packet — if the
 packet doesn't have enough for a block type, skip that block type.
 
-Produce a sequence of 3-5 blocks. This is a hard requirement: the
-sequence MUST contain at least one "story" block AND at least one
-challenge block — a story-only response is a failure. Start with one
+Produce a sequence of 2-3 blocks. This is a hard requirement: the
+sequence MUST contain exactly one "story" block AND at least one
+challenge block — a story-only response is a failure. Start with the
 "story" block (a short, warm 2-4 sentence hook about the nutrient,
-optionally with a playful mascotLine), then 1-3 challenge blocks of
-DIFFERENT kinds drawn from whatever the facts packet supports. If hasScanHistory is true, prefer
+optionally with a playful mascotLine), then challenge blocks of
+DIFFERENT kinds drawn from whatever the facts packet supports.
+Produce exactly 2 challenge blocks whenever the packet supports it.
+Only produce 1 challenge block if the packet is thin — little or no
+scan history (hasScanHistory false or fewer than 2 usable scanFoods)
+and few claims or glossary terms to draw a second, genuinely different
+challenge from. Never pad to 2 by repeating a kind or inventing
+content just to hit the count. If hasScanHistory is true, prefer
 scan-grounded kinds (quiz-mc/comparison/bar-vs-limit/ranked-list/decoy/
 spot-the-trick, each using real scanFoods/decoyFoods/claims and their
 real foodEventId). Comparison blocks must always ask "which has MORE"
@@ -433,6 +439,17 @@ export async function POST(request: NextRequest) {
     if (!blocks.some(isChallengeBlock)) {
       console.warn("learn-content: no challenge block survived validation, falling back", { lessonId, blockCount: blocks.length });
       return NextResponse.json({ ok: false, error: "No usable challenge generated." }, { status: 502 });
+    }
+
+    // Two challenges is the target; only accept one when the packet
+    // itself was thin (see SYSTEM_PROMPT) — otherwise fall back to the
+    // deterministic sequence, which enforces the same rule, rather than
+    // silently shipping a shorter lesson than the data actually supports.
+    const challengeCount = blocks.filter(isChallengeBlock).length;
+    const thinData = !facts.hasScanHistory || facts.scanFoods.length < 2;
+    if (!thinData && challengeCount < 2) {
+      console.warn("learn-content: fewer challenge blocks than the data supports, falling back", { lessonId, challengeCount });
+      return NextResponse.json({ ok: false, error: "Not enough usable challenges generated." }, { status: 502 });
     }
 
     const sequence: LearnContentSequence = {

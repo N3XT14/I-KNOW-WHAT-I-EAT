@@ -28,7 +28,7 @@ function localDateKey(d: Date = new Date()): string {
 // server-side — otherwise a client that cached a result under the old
 // rules keeps serving it forever, never re-hitting the API to pick up
 // the fix.
-const CONTENT_VERSION = "v3";
+const CONTENT_VERSION = "v4";
 
 function cacheKey(profileId: string, lessonId: string, scanFoodCount: number): string {
   return `iky-learn-content:${CONTENT_VERSION}:${profileId}:${lessonId}:${localDateKey()}:${scanFoodCount}`;

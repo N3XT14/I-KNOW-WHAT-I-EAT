@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Card from "@/components/ui/Card";
@@ -12,7 +12,7 @@ import { getFoodEventsForProfile } from "@/lib/foodEvents";
 import { getLearnContent } from "@/lib/learnContent";
 import type { Profile } from "@/types/profile";
 import type { FoodEvent } from "@/types/foodEvent";
-import type { LearnContentSequence } from "@/types/learnContent";
+import { isChallengeBlock, type LearnContentSequence } from "@/types/learnContent";
 
 export default function LessonPage() {
   const params = useParams<{ lessonId: string }>();
@@ -23,6 +23,8 @@ export default function LessonPage() {
   const [activeProfileId, setActiveProfileIdState] = useState<string | null>(null);
   const [sequence, setSequence] = useState<LearnContentSequence | null>(null);
   const [loading, setLoading] = useState(false);
+  const [answeredBlockIds, setAnsweredBlockIds] = useState<Set<string>>(new Set());
+  const [confirmingExit, setConfirmingExit] = useState(false);
 
   function refreshProfiles() {
     setProfiles(getProfiles());
@@ -48,6 +50,8 @@ export default function LessonPage() {
       if (!cancelled) {
         setSequence(seq);
         setLoading(false);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setAnsweredBlockIds(new Set());
       }
     });
     return () => {
@@ -55,6 +59,24 @@ export default function LessonPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lesson?.id, activeProfile?.id, events.length]);
+
+  // Only graded challenges (not "matching", which is reveal-only with no
+  // correct/incorrect state) count toward "has this lesson been finished".
+  // A lesson with none — e.g. a matching-only reference fallback — is
+  // trivially complete, since there's nothing to grade.
+  const gradedBlockIds = useMemo(
+    () => (sequence?.blocks.filter((b) => isChallengeBlock(b) && b.kind !== "matching").map((b) => b.id) ?? []),
+    [sequence],
+  );
+  const isComplete = gradedBlockIds.every((id) => answeredBlockIds.has(id));
+
+  function handleBackClick() {
+    if (isComplete) {
+      router.push("/learn");
+      return;
+    }
+    setConfirmingExit(true);
+  }
 
   if (!lesson) {
     return (
@@ -66,17 +88,48 @@ export default function LessonPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-4 p-4 pb-6">
-      <header className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => router.push("/learn")}
-          className="flex items-center gap-1 text-sm text-[var(--color-on-surface-variant)]"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Learn
-        </button>
-        {profiles.length > 0 && (
-          <ProfileSwitcher profiles={profiles} activeProfileId={activeProfileId} onChange={refreshProfiles} />
+      <header className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={handleBackClick}
+            className="flex items-center gap-1 text-sm text-[var(--color-on-surface-variant)]"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Learn
+          </button>
+          {profiles.length > 0 && (
+            <ProfileSwitcher profiles={profiles} activeProfileId={activeProfileId} onChange={refreshProfiles} />
+          )}
+        </div>
+        {/* Inline confirm, in normal page flow — Dialog/Radix Portal is
+            broken inside the phone-frame, so this can't be an overlay.
+            Leaving anyway doesn't save any resume state: the sequence is
+            already cached whole, so next visit just starts over from the
+            story card. */}
+        {confirmingExit && (
+          <Card className="flex flex-col gap-2 border-[var(--color-attention)] p-3">
+            <p className="text-sm text-[var(--color-on-surface)]">
+              Leave this lesson? You haven&apos;t finished all the challenges, and you&apos;ll start from the
+              beginning next time.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmingExit(false)}
+                className="rounded-[var(--radius-sm)] px-3 py-1.5 text-sm text-[var(--color-on-surface-variant)]"
+              >
+                Stay
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push("/learn")}
+                className="rounded-[var(--radius-sm)] bg-[var(--color-error-container)] px-3 py-1.5 text-sm font-medium text-[var(--color-error)]"
+              >
+                Leave anyway
+              </button>
+            </div>
+          </Card>
         )}
       </header>
 
@@ -107,6 +160,7 @@ export default function LessonPage() {
               events={events}
               lessonId={lesson.id}
               nutrient={lesson.nutrientFocus}
+              onAnswered={(id) => setAnsweredBlockIds((prev) => new Set(prev).add(id))}
             />
           ))}
       </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Card from "@/components/ui/Card";
 import type { Profile } from "@/types/profile";
 import type { FoodEvent } from "@/types/foodEvent";
 import { currentAgeBand } from "@/types/profile";
@@ -10,6 +9,7 @@ import { eligibleFoodsForNutrient } from "@/lib/challengePool";
 import { pickWeakNutrient, tutorTipCacheKey, getCachedTip, setCachedTip } from "@/lib/tutorTip";
 import { nutrientLabel } from "@/lib/nutrientLabels";
 import type { TutorTipApiResponse } from "@/types/tutorTip";
+import Mascot from "@/components/learn/Mascot";
 
 // The "personal health tutor" card on the Learn hub. Purely a READER —
 // generation happens elsewhere, right when a challenge is answered (see
@@ -105,15 +105,10 @@ export default function TutorTip({
   if (status === "error" && !tip) return null; // quiet failure — the mastery card above already shows the raw numbers
 
   return (
-    <Card className="flex flex-col gap-1.5 border-[var(--color-primary)] p-4">
-      <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-primary)]">
-        Your tutor
-      </span>
-      {status === "loading" && !tip ? (
-        <p className="text-sm text-[var(--color-on-surface-variant)]">Thinking about your progress…</p>
-      ) : (
-        <p className="text-sm text-[var(--color-on-surface)]">{tip}</p>
-      )}
-    </Card>
+    <Mascot
+      pose="sit_cross_legged"
+      size="md"
+      line={status === "loading" && !tip ? "Thinking about your progress…" : (tip ?? "")}
+    />
   );
 }

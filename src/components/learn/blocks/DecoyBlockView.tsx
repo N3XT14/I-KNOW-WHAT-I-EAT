@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Card from "@/components/ui/Card";
-import Badge from "@/components/ui/Badge";
+import Mascot from "@/components/learn/Mascot";
 import type { DecoyBlock } from "@/types/learnContent";
 import type { Profile } from "@/types/profile";
 import type { FoodEvent } from "@/types/foodEvent";
@@ -15,12 +15,14 @@ export default function DecoyBlockView({
   events,
   lessonId,
   nutrient,
+  onAnswered,
 }: {
   block: DecoyBlock;
   profile: Profile;
   events: FoodEvent[];
   lessonId: string;
   nutrient: NutrientKey;
+  onAnswered?: (blockId: string) => void;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const answered = selected !== null;
@@ -33,6 +35,7 @@ export default function DecoyBlockView({
   function pick(id: string) {
     setSelected(id);
     recordGeneratedAttempt(profile, events, lessonId, nutrient, "decoy", block.id, id === block.real.foodEventId);
+    onAnswered?.(block.id);
   }
 
   return (
@@ -62,9 +65,8 @@ export default function DecoyBlockView({
         })}
       </div>
       {answered && (
-        <div className="flex flex-col gap-2 border-t border-[var(--color-outline)] pt-3">
-          <Badge tone={correct ? "primary" : "attention"}>{correct ? "Nice — that's right." : "Not quite."}</Badge>
-          <p className="text-sm text-[var(--color-on-surface)]">{block.explanation}</p>
+        <div className="border-t border-[var(--color-outline)] pt-3">
+          <Mascot pose={correct ? "celebrate_jump" : "shy_nervous"} size="sm" line={block.explanation} />
         </div>
       )}
     </Card>

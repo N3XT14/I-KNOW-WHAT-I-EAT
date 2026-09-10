@@ -6,6 +6,7 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import LogConsumptionPanel from "@/components/profile/LogConsumptionPanel";
+import Mascot, { type MascotPose } from "@/components/learn/Mascot";
 import ProfileSwitcher from "@/components/profile/ProfileSwitcher";
 import type { ScanApiResponse } from "@/types/scanResult";
 import type { FoodItem } from "@/types/foodItem";
@@ -46,6 +47,20 @@ const WATCH_TONE: Record<string, "good" | "caution" | "high"> = {
   low: "good",
   moderate: "caution",
   high: "high",
+};
+
+// Post-scan takeaway placement — the mascot's highest-visibility spot.
+// Static per-tone copy for now; TutorTip->Mascot unification will replace
+// this with the generated line once that rewiring happens.
+const VERDICT_POSE: Record<"good" | "caution" | "high", MascotPose> = {
+  good: "celebrate_jump",
+  caution: "heart_hug",
+  high: "shy_nervous",
+};
+const VERDICT_LINE: Record<"good" | "caution" | "high", string> = {
+  good: "Nice pick — this one's easy on the label.",
+  caution: "Worth a second look before you dig in.",
+  high: "Heads up, this one runs high — check what for below.",
 };
 
 function verdictTone(comparisons: Comparison[], flagged: boolean): "good" | "caution" | "high" {
@@ -457,6 +472,9 @@ export default function ScanPage() {
                 You said: &ldquo;{item.extraction.userDescription}&rdquo;
               </p>
             )}
+            <div className="mt-3">
+              <Mascot line={VERDICT_LINE[tone]} pose={VERDICT_POSE[tone]} size="sm" />
+            </div>
           </Card>
 
           {/* Logging is right under the headline — the one thing every

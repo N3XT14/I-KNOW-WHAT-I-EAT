@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Card from "@/components/ui/Card";
-import Badge from "@/components/ui/Badge";
+import Mascot from "@/components/learn/Mascot";
 import type { QuizMcBlock } from "@/types/learnContent";
 import type { Profile } from "@/types/profile";
 import type { FoodEvent } from "@/types/foodEvent";
@@ -15,12 +15,14 @@ export default function QuizMcBlockView({
   events,
   lessonId,
   nutrient,
+  onAnswered,
 }: {
   block: QuizMcBlock;
   profile: Profile;
   events: FoodEvent[];
   lessonId: string;
   nutrient: NutrientKey;
+  onAnswered?: (blockId: string) => void;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const answered = selected !== null;
@@ -29,6 +31,7 @@ export default function QuizMcBlockView({
   function pick(id: string) {
     setSelected(id);
     recordGeneratedAttempt(profile, events, lessonId, nutrient, "quiz-mc", block.id, id === block.correctOptionId);
+    onAnswered?.(block.id);
   }
 
   return (
@@ -58,9 +61,8 @@ export default function QuizMcBlockView({
         })}
       </div>
       {answered && (
-        <div className="flex flex-col gap-2 border-t border-[var(--color-outline)] pt-3">
-          <Badge tone={correct ? "primary" : "attention"}>{correct ? "Nice — that's right." : "Not quite."}</Badge>
-          <p className="text-sm text-[var(--color-on-surface)]">{block.explanation}</p>
+        <div className="border-t border-[var(--color-outline)] pt-3">
+          <Mascot pose={correct ? "celebrate_jump" : "shy_nervous"} size="sm" line={block.explanation} />
         </div>
       )}
     </Card>

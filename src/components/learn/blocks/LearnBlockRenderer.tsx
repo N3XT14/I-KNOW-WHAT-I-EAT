@@ -17,12 +17,14 @@ export default function LearnBlockRenderer({
   events,
   lessonId,
   nutrient,
+  onAnswered,
 }: {
   block: LearnContentBlock;
   profile: Profile;
   events: FoodEvent[];
   lessonId: string;
   nutrient: NutrientKey;
+  onAnswered?: (blockId: string) => void;
 }) {
   switch (block.kind) {
     case "story":
@@ -30,16 +32,16 @@ export default function LearnBlockRenderer({
     case "matching":
       return <MatchingBlockView block={block} />;
     case "quiz-mc":
-      return <QuizMcBlockView block={block} profile={profile} events={events} lessonId={lessonId} nutrient={nutrient} />;
+      return <QuizMcBlockView block={block} profile={profile} events={events} lessonId={lessonId} nutrient={nutrient} onAnswered={onAnswered} />;
     case "comparison":
-      return <ComparisonBlockView block={block} profile={profile} events={events} lessonId={lessonId} nutrient={nutrient} />;
+      return <ComparisonBlockView block={block} profile={profile} events={events} lessonId={lessonId} nutrient={nutrient} onAnswered={onAnswered} />;
     case "bar-vs-limit":
-      return <BarVsLimitBlockView block={block} profile={profile} events={events} lessonId={lessonId} nutrient={nutrient} />;
+      return <BarVsLimitBlockView block={block} profile={profile} events={events} lessonId={lessonId} nutrient={nutrient} onAnswered={onAnswered} />;
     case "ranked-list":
-      return <RankedListBlockView block={block} profile={profile} events={events} lessonId={lessonId} nutrient={nutrient} />;
+      return <RankedListBlockView block={block} profile={profile} events={events} lessonId={lessonId} nutrient={nutrient} onAnswered={onAnswered} />;
     case "decoy":
-      return <DecoyBlockView block={block} profile={profile} events={events} lessonId={lessonId} nutrient={nutrient} />;
+      return <DecoyBlockView block={block} profile={profile} events={events} lessonId={lessonId} nutrient={nutrient} onAnswered={onAnswered} />;
     case "spot-the-trick":
-      return <SpotTheTrickBlockView block={block} profile={profile} events={events} lessonId={lessonId} nutrient={nutrient} />;
+      return <SpotTheTrickBlockView block={block} profile={profile} events={events} lessonId={lessonId} nutrient={nutrient} onAnswered={onAnswered} />;
   }
 }

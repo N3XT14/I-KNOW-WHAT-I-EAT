@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Card from "@/components/ui/Card";
-import Badge from "@/components/ui/Badge";
+import Mascot from "@/components/learn/Mascot";
 import type { BarVsLimitBlock } from "@/types/learnContent";
 import type { Profile } from "@/types/profile";
 import type { FoodEvent } from "@/types/foodEvent";
@@ -15,12 +15,14 @@ export default function BarVsLimitBlockView({
   events,
   lessonId,
   nutrient,
+  onAnswered,
 }: {
   block: BarVsLimitBlock;
   profile: Profile;
   events: FoodEvent[];
   lessonId: string;
   nutrient: NutrientKey;
+  onAnswered?: (blockId: string) => void;
 }) {
   const [guess, setGuess] = useState<"over" | "under" | null>(null);
   const actual: "over" | "under" = block.value > block.limit ? "over" : "under";
@@ -30,6 +32,7 @@ export default function BarVsLimitBlockView({
   function pick(g: "over" | "under") {
     setGuess(g);
     recordGeneratedAttempt(profile, events, lessonId, nutrient, "bar-vs-limit", block.id, g === actual);
+    onAnswered?.(block.id);
   }
 
   return (
@@ -60,11 +63,10 @@ export default function BarVsLimitBlockView({
       </div>
       {answered && (
         <div className="flex flex-col gap-2 border-t border-[var(--color-outline)] pt-3">
-          <Badge tone={correct ? "primary" : "attention"}>{correct ? "Nice — that's right." : "Not quite."}</Badge>
           <p className="text-sm text-[var(--color-on-surface)]">
             {block.label}: {block.value}{block.unit} vs a {block.limit}{block.unit} daily limit.
           </p>
-          <p className="text-xs text-[var(--color-on-surface-variant)]">{block.explanation}</p>
+          <Mascot pose={correct ? "celebrate_jump" : "shy_nervous"} size="sm" line={block.explanation} />
         </div>
       )}
     </Card>

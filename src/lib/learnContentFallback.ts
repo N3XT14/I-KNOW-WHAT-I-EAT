@@ -77,7 +77,11 @@ function referenceChallenges(facts: LearnFactsPacket): LearnContentBlock[] {
 }
 
 export function buildFallbackSequence(lessonId: string, facts: LearnFactsPacket): LearnContentSequence {
-  const challenges = facts.hasScanHistory ? scanChallenges(facts) : referenceChallenges(facts);
+  // Two challenges is the target; the scan-grounded path can produce up
+  // to 3 (bar-vs-limit + ranked-list + spot-the-trick), so cap it here.
+  // The reference-only path already tops out at 1 (matching) — that's
+  // the "thin data" case falling back to 1 on its own.
+  const challenges = (facts.hasScanHistory ? scanChallenges(facts) : referenceChallenges(facts)).slice(0, 2);
   return {
     lessonId,
     nutrient: facts.nutrient,
