@@ -6,6 +6,23 @@ import { isChallengeBlock } from "@/types/learnContent";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const MODEL = "gemini-3.7-flash";
 
+// Steers which challenge kinds to reach for so a card's generated
+// content actually matches what its title/teaser on the Learn tab
+// promised, instead of every card for a nutrient producing the same
+// generic mix. Appended to the per-request prompt (not baked into
+// SYSTEM_PROMPT) since it varies per call; the format/validation rules
+// in SYSTEM_PROMPT stay the same regardless of angle.
+const ANGLE_INSTRUCTIONS: Record<string, string> = {
+  basics:
+    "Angle: basics. Use the usual mixed set of challenge kinds appropriate to the facts packet — no particular kind is favored.",
+  claims:
+    'Angle: claims. This card is specifically about double-checking label claims. If the packet\'s "claims" array has at least one entry, at least one challenge block MUST be a "spot-the-trick" block built from a real claim in that array. Only add a second block (a different kind) if the packet meaningfully supports one — never pad with an unrelated kind just to hit 2.',
+  compare:
+    'Angle: compare. This card is specifically about comparing foods the profile has actually scanned. Prioritize a "comparison" block (2 items) or "ranked-list" block (3+ items) built from real "scanFoods" entries in the packet. Only use another kind if the packet cannot support a comparison/ranking.',
+  "hidden-sources":
+    'Angle: hidden-sources. This card is specifically about contrasting what the profile has actually eaten against a food they have NOT logged. Prioritize a "decoy" block: real = one entry from "scanFoods", decoy = one entry from "decoyFoods". Only use another kind if the packet cannot support that.',
+};
+
 const SYSTEM_PROMPT = `You write short Learn Mode content for a food-label
 literacy app aimed at parents and kids in India. You will be given a
 JSON "facts" packet — real logged foods, real nutrient limits, real
@@ -396,11 +413,13 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   const lessonId: string | undefined = body?.lessonId;
   const facts: LearnFactsPacket | undefined = body?.facts;
+  const angle: string = body?.angle ?? "basics";
   if (!lessonId || !facts) {
     return NextResponse.json({ ok: false, error: "Missing lessonId or facts." }, { status: 400 });
   }
 
   const knownIds = new Set(facts.scanFoods.map((f) => f.foodEventId));
+  const angleInstruction = ANGLE_INSTRUCTIONS[angle] ?? ANGLE_INSTRUCTIONS.basics;
 
   try {
     const response = await fetchWithRetry(
@@ -410,7 +429,7 @@ export async function POST(request: NextRequest) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          contents: [{ parts: [{ text: `Facts packet:\n${JSON.stringify(facts)}` }] }],
+          contents: [{ parts: [{ text: `Facts packet:\n${JSON.stringify(facts)}\n\n${angleInstruction}` }] }],
           // responseJsonSchema (not responseSchema) — the older field is
           // OpenAPI-flavored and rejects anyOf outright; responseJsonSchema
           // is real JSON Schema and is what lets the per-kind required

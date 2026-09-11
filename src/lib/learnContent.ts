@@ -6,6 +6,7 @@
 import type { FoodEvent } from "@/types/foodEvent";
 import type { Profile } from "@/types/profile";
 import type { NutrientKey } from "@/types/nutrientLimits";
+import type { LessonAngle } from "@/types/learnMode";
 import type { LearnContentSequence } from "@/types/learnContent";
 import { buildFactsPacket } from "@/lib/learnContentPool";
 import { buildFallbackSequence } from "@/lib/learnContentFallback";
@@ -27,8 +28,10 @@ function localDateKey(d: Date = new Date()): string {
 // Bump this whenever the block schema or route validation logic changes
 // server-side — otherwise a client that cached a result under the old
 // rules keeps serving it forever, never re-hitting the API to pick up
-// the fix.
-const CONTENT_VERSION = "v4";
+// the fix. v5: generation now takes the lesson's angle into account
+// (see ANGLE_INSTRUCTIONS in the route), so a cached v4 result no longer
+// reflects what the current prompt would produce.
+const CONTENT_VERSION = "v5";
 
 function cacheKey(profileId: string, lessonId: string, scanFoodCount: number): string {
   return `iky-learn-content:${CONTENT_VERSION}:${profileId}:${lessonId}:${localDateKey()}:${scanFoodCount}`;
@@ -58,6 +61,7 @@ export async function getLearnContent(
   events: FoodEvent[],
   lessonId: string,
   nutrient: NutrientKey,
+  angle: LessonAngle = "basics",
 ): Promise<LearnContentSequence> {
   const facts = buildFactsPacket(profile, events, nutrient);
   const key = cacheKey(profile.id, lessonId, facts.scanFoods.length);
@@ -69,7 +73,7 @@ export async function getLearnContent(
     const res = await fetch("/api/learn-content", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ lessonId, facts }),
+      body: JSON.stringify({ lessonId, facts, angle }),
     });
     const data = await res.json();
     if (data.ok) {
@@ -80,7 +84,7 @@ export async function getLearnContent(
     // fall through to the deterministic sequence below
   }
 
-  const fallback = buildFallbackSequence(lessonId, facts);
+  const fallback = buildFallbackSequence(lessonId, facts, angle);
   setCached(key, fallback);
   return fallback;
 }

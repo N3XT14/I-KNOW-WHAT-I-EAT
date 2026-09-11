@@ -10,6 +10,7 @@ import { getLesson } from "@/lib/lessons";
 import { getProfiles, getActiveProfileId } from "@/lib/profiles";
 import { getFoodEventsForProfile } from "@/lib/foodEvents";
 import { getLearnContent } from "@/lib/learnContent";
+import { markLessonCompleted } from "@/lib/lessonCompletions";
 import type { Profile } from "@/types/profile";
 import type { FoodEvent } from "@/types/foodEvent";
 import { isChallengeBlock, type LearnContentSequence } from "@/types/learnContent";
@@ -46,7 +47,7 @@ export default function LessonPage() {
     }
     let cancelled = false;
     setLoading(true);
-    getLearnContent(activeProfile, events, lesson.id, lesson.nutrientFocus).then((seq) => {
+    getLearnContent(activeProfile, events, lesson.id, lesson.nutrientFocus, lesson.angle).then((seq) => {
       if (!cancelled) {
         setSequence(seq);
         setLoading(false);
@@ -69,6 +70,19 @@ export default function LessonPage() {
     [sequence],
   );
   const isComplete = gradedBlockIds.every((id) => answeredBlockIds.has(id));
+
+  // Fires once per visit the moment every graded block has been
+  // answered — markLessonCompleted is idempotent, so a re-render while
+  // isComplete stays true doesn't add a duplicate record. A
+  // zero-graded-block lesson (e.g. matching-only) is trivially complete
+  // immediately, which correctly marks it done right away rather than
+  // leaving it stuck reappearing in the Learn list forever.
+  useEffect(() => {
+    if (activeProfile && lesson && isComplete && sequence) {
+      markLessonCompleted(activeProfile.id, lesson.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isComplete, activeProfile?.id, lesson?.id, sequence]);
 
   function handleBackClick() {
     if (isComplete) {

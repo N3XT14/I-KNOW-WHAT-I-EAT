@@ -7,7 +7,7 @@ import { Flame } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import ProfileSwitcher from "@/components/profile/ProfileSwitcher";
-import { LESSONS } from "@/lib/lessons";
+import { getLessonCards } from "@/lib/lessons";
 import { getProfiles, getActiveProfileId } from "@/lib/profiles";
 import { getChallengeAttemptsForProfile } from "@/lib/challengeAttempts";
 import { getFoodEventsForProfile } from "@/lib/foodEvents";
@@ -15,7 +15,16 @@ import TutorTip from "@/components/learn/TutorTip";
 import { POSE_SRC } from "@/components/learn/Mascot";
 import { currentStreak, masteryByNutrient } from "@/lib/streaks";
 import { nutrientLabel } from "@/lib/nutrientLabels";
+import { TRACKED_NUTRIENT_KEYS } from "@/types/nutrientLimits";
 import type { Profile } from "@/types/profile";
+import type { LessonAngle } from "@/types/learnMode";
+
+const ANGLE_TAG: Record<LessonAngle, string> = {
+  basics: "Basics",
+  claims: "Claims check",
+  compare: "Compare",
+  "hidden-sources": "Hidden sources",
+};
 
 export default function LearnPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -36,9 +45,13 @@ export default function LearnPage() {
   const events = activeProfileId ? getFoodEventsForProfile(activeProfileId) : [];
   const streak = currentStreak(attempts);
   const mastery = masteryByNutrient(attempts);
-  // Every nutrient a lesson exists for, not just ones already attempted —
-  // so "not tried yet" shows up as a status, not an absence.
-  const allNutrients = Array.from(new Set(LESSONS.map((l) => l.nutrientFocus)));
+  // Every tracked nutrient, not just ones already attempted — so "not
+  // tried yet" shows up as a status, not an absence. Independent of
+  // which lesson cards are currently generated, since a nutrient can
+  // have zero eligible cards right now (e.g. everything's been
+  // completed) and should still show its mastery row.
+  const allNutrients = TRACKED_NUTRIENT_KEYS;
+  const lessonCards = activeProfile ? getLessonCards(activeProfile, events) : [];
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-4 p-4 pb-6">
@@ -104,9 +117,22 @@ export default function LearnPage() {
       )}
 
       <div className="flex flex-col gap-3">
-        {LESSONS.map((lesson) => (
+        {activeProfile && lessonCards.length === 0 && (
+          <Card className="p-4">
+            <p className="text-sm text-[var(--color-on-surface-variant)]">
+              You&apos;ve finished every lesson available right now — scan a few more foods to unlock new ones.
+            </p>
+          </Card>
+        )}
+        {lessonCards.map((lesson) => (
           <Link key={lesson.id} href={`/learn/${lesson.id}`}>
             <Card className="p-4 transition-colors hover:border-[var(--color-primary)]">
+              <div className="mb-1.5 flex items-center gap-2">
+                <Badge tone="neutral">{ANGLE_TAG[lesson.angle]}</Badge>
+                <Badge tone="neutral" className="capitalize">
+                  {nutrientLabel(lesson.nutrientFocus)}
+                </Badge>
+              </div>
               <h2 className="text-sm font-semibold text-[var(--color-on-surface)]">
                 {lesson.title}
               </h2>

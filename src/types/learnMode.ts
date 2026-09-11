@@ -12,10 +12,17 @@ import { limitFor, type NutrientKey, type NutrientLimit } from "@/types/nutrient
 import type { LabelExtraction } from "@/types/labelExtraction";
 import { nutrientAmountFor } from "@/lib/nutrientMatching";
 
+// A lesson "angle" — what kind of card this is for a given nutrient.
+// "basics" always exists (works with zero scan history); the others only
+// get generated when the profile's real data actually supports them —
+// see lib/lessons.ts.
+export type LessonAngle = "basics" | "claims" | "compare" | "hidden-sources";
+
 export type Lesson = {
   id: string;
   ageBand: AgeBand | "all";
   nutrientFocus: NutrientKey;
+  angle: LessonAngle;
   title: string;
   body: string; // plain-language explainer, a few sentences
 };
