@@ -3,11 +3,15 @@
 import { useState } from "react";
 import Card from "@/components/ui/Card";
 import Mascot from "@/components/learn/Mascot";
+import OptionButton from "./OptionButton";
+import DifficultyBadge from "./DifficultyBadge";
 import type { DecoyBlock } from "@/types/learnContent";
 import type { Profile } from "@/types/profile";
 import type { FoodEvent } from "@/types/foodEvent";
 import type { NutrientKey } from "@/types/nutrientLimits";
 import { recordGeneratedAttempt } from "@/lib/generatedAttempt";
+
+const LETTERS = ["A", "B"];
 
 export default function DecoyBlockView({
   block,
@@ -40,29 +44,29 @@ export default function DecoyBlockView({
 
   return (
     <Card className="flex flex-col gap-3 p-4">
-      <p className="text-sm text-[var(--color-on-surface)]">{block.prompt}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm text-[var(--color-on-surface)]">{block.prompt}</p>
+        <DifficultyBadge difficulty={block.difficulty} />
+      </div>
       <div className="grid grid-cols-2 gap-2">
-        {options.map((o) => {
-          const isSelected = selected === o.id;
-          const isCorrect = answered && o.id === block.real.foodEventId;
-          return (
-            <button
-              key={o.id}
-              type="button"
-              disabled={answered}
-              onClick={() => pick(o.id)}
-              className={`rounded-[var(--radius-md)] border px-3 py-2.5 text-sm transition-colors ${
-                isCorrect
-                  ? "border-[var(--color-primary)] bg-[var(--color-primary-container)] text-[var(--color-primary-dark)]"
-                  : isSelected
-                    ? "border-[var(--color-error)] bg-[var(--color-error-container)] text-[var(--color-error)]"
-                    : "border-[var(--color-outline)] text-[var(--color-on-surface)]"
-              }`}
-            >
-              {o.label}
-            </button>
-          );
-        })}
+        {options.map((o, i) => (
+          <OptionButton
+            key={o.id}
+            letter={LETTERS[i] ?? String(i + 1)}
+            label={o.label}
+            disabled={answered}
+            onClick={() => pick(o.id)}
+            state={
+              !answered
+                ? "idle"
+                : o.id === block.real.foodEventId
+                  ? "correct"
+                  : o.id === selected
+                    ? "incorrect"
+                    : "muted"
+            }
+          />
+        ))}
       </div>
       {answered && (
         <div className="border-t border-[var(--color-outline)] pt-3">

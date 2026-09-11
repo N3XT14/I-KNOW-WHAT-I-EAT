@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import Mascot from "@/components/learn/Mascot";
 import { createProfile, type Sex } from "@/types/profile";
 import { saveProfile } from "@/lib/profiles";
 
@@ -44,6 +45,7 @@ export default function ProfileOnboarding({ onDone }: { onDone: () => void }) {
 
   return (
     <Card variant="elevated" className="flex flex-col gap-4 p-6">
+      <Mascot pose="heart_hug" size="md" line="Hi! Let's get your family set up." />
       <div>
         <h1 className="text-lg font-semibold text-[var(--color-on-surface)]">
           Who&apos;s this for?

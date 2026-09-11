@@ -1,5 +1,6 @@
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
+import Mascot, { type MascotPose } from "@/components/learn/Mascot";
 import { currentAgeBand, type Profile } from "@/types/profile";
 import { getFoodEventsForProfile } from "@/lib/foodEvents";
 import { isSourced } from "@/types/foodItem";
@@ -9,6 +10,20 @@ import { nutrientLabel } from "@/lib/nutrientLabels";
 
 const WINDOW_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+type NoteTone = "good" | "caution" | "high";
+
+function noteTone(avgPercentOfDailyLimit: number): NoteTone {
+  return avgPercentOfDailyLimit >= 100 ? "high" : avgPercentOfDailyLimit >= 40 ? "caution" : "good";
+}
+
+// Same tone language as the post-scan takeaway (scan/page.tsx) — one
+// mascot voice across the app, not a different set of reactions per screen.
+const NOTE_POSE: Record<NoteTone, MascotPose> = {
+  good: "celebrate_jump",
+  caution: "heart_hug",
+  high: "shy_nervous",
+};
 
 type NutrientAverage = { nutrient: NutrientKey; avgPercentOfDailyLimit: number };
 
@@ -85,29 +100,23 @@ export default function ProfileSummary({ profile }: { profile: Profile }) {
       <p className="text-sm text-[var(--color-on-surface-variant)]">
         {loggedScans} scan{loggedScans === 1 ? "" : "s"} logged for{" "}
         {profile.name} in the last {WINDOW_DAYS} days.
-        {nutrientOfNote && nutrientOfNote.avgPercentOfDailyLimit >= 40 && (
-          <>
-            {" "}
-            {nutrientLabel(nutrientOfNote.nutrient)} is the one to watch —
-            averaging {nutrientOfNote.avgPercentOfDailyLimit}% of their
-            daily limit per day across what&apos;s been logged.
-          </>
-        )}
       </p>
       {nutrientOfNote && (
-        <Badge
-          tone={
-            nutrientOfNote.avgPercentOfDailyLimit >= 100
-              ? "high"
-              : nutrientOfNote.avgPercentOfDailyLimit >= 40
-                ? "caution"
-                : "good"
-          }
-          className="w-fit"
-        >
-          {nutrientLabel(nutrientOfNote.nutrient)} ·{" "}
-          {nutrientOfNote.avgPercentOfDailyLimit}% avg/day
-        </Badge>
+        <>
+          <Badge tone={noteTone(nutrientOfNote.avgPercentOfDailyLimit)} className="w-fit">
+            {nutrientLabel(nutrientOfNote.nutrient)} ·{" "}
+            {nutrientOfNote.avgPercentOfDailyLimit}% avg/day
+          </Badge>
+          <Mascot
+            pose={NOTE_POSE[noteTone(nutrientOfNote.avgPercentOfDailyLimit)]}
+            size="sm"
+            line={
+              nutrientOfNote.avgPercentOfDailyLimit >= 40
+                ? `${nutrientLabel(nutrientOfNote.nutrient)} is the one to watch — averaging ${nutrientOfNote.avgPercentOfDailyLimit}% of the daily limit per day across what's been logged.`
+                : `Steady week — nothing's stood out above ${nutrientOfNote.avgPercentOfDailyLimit}% of the daily limit yet.`
+            }
+          />
+        </>
       )}
       <p className="text-xs text-[var(--color-on-surface-variant)]">
         Based only on what&apos;s been scanned and logged here — not{" "}

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Check, X } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Mascot from "@/components/learn/Mascot";
+import DifficultyBadge from "./DifficultyBadge";
 import type { RankedListBlock } from "@/types/learnContent";
 import type { Profile } from "@/types/profile";
 import type { FoodEvent } from "@/types/foodEvent";
@@ -49,20 +51,39 @@ export default function RankedListBlockView({
 
   return (
     <Card className="flex flex-col gap-3 p-4">
-      <p className="text-sm text-[var(--color-on-surface)]">{block.prompt}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm text-[var(--color-on-surface)]">{block.prompt}</p>
+        <DifficultyBadge difficulty={block.difficulty} />
+      </div>
       <div className="flex flex-col gap-2">
         {block.items.map((item) => {
           const position = tapped.indexOf(item.foodEventId);
+          const isPlaced = position !== -1;
+          const isRight = answered && correctOrder[position] === item.foodEventId;
+          const containerStyle = !answered
+            ? "border-[var(--color-outline)] text-[var(--color-on-surface)]"
+            : isRight
+              ? "border-[var(--color-good)] bg-[var(--color-good-container)] text-[var(--color-good)]"
+              : "border-[var(--color-error)] bg-[var(--color-error-container)] text-[var(--color-error)]";
+          const badgeStyle = !answered
+            ? "border-[var(--color-outline)] text-[var(--color-on-surface-variant)]"
+            : isRight
+              ? "border-[var(--color-good)] bg-[var(--color-good)] text-white"
+              : "border-[var(--color-error)] bg-[var(--color-error)] text-white";
           return (
             <button
               key={item.foodEventId}
               type="button"
-              disabled={position !== -1 || answered}
+              disabled={isPlaced || answered}
               onClick={() => tap(item.foodEventId)}
-              className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--color-outline)] px-3 py-2 text-left text-sm text-[var(--color-on-surface)] disabled:opacity-60"
+              className={`flex items-center gap-2.5 rounded-[var(--radius-md)] border px-3 py-2.5 text-left text-sm transition-colors disabled:cursor-default ${containerStyle}`}
             >
-              <span>{item.label}</span>
-              {position !== -1 && <span className="font-semibold">#{position + 1}</span>}
+              <span
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold ${badgeStyle}`}
+              >
+                {isPlaced ? (answered ? isRight ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" /> : position + 1) : ""}
+              </span>
+              <span className="flex-1">{item.label}</span>
             </button>
           );
         })}

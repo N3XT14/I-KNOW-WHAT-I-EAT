@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Flame } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
@@ -11,6 +12,7 @@ import { getProfiles, getActiveProfileId } from "@/lib/profiles";
 import { getChallengeAttemptsForProfile } from "@/lib/challengeAttempts";
 import { getFoodEventsForProfile } from "@/lib/foodEvents";
 import TutorTip from "@/components/learn/TutorTip";
+import { POSE_SRC } from "@/components/learn/Mascot";
 import { currentStreak, masteryByNutrient } from "@/lib/streaks";
 import { nutrientLabel } from "@/lib/nutrientLabels";
 import type { Profile } from "@/types/profile";
@@ -59,9 +61,12 @@ export default function LearnPage() {
       </header>
 
       {activeProfile && streak > 0 && (
-        <Badge tone="warning" icon={<Flame className="h-3.5 w-3.5" />}>
-          {streak} day{streak === 1 ? "" : "s"} streak · {activeProfile.name}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Image src={POSE_SRC.celebrate_jump} alt="" width={28} height={28} aria-hidden />
+          <Badge tone="warning" icon={<Flame className="h-3.5 w-3.5" />}>
+            {streak} day{streak === 1 ? "" : "s"} streak · {activeProfile.name}
+          </Badge>
+        </div>
       )}
 
       {activeProfile && (

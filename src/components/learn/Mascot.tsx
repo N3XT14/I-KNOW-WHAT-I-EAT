@@ -10,7 +10,7 @@ export type MascotPose =
   | "run_dash"
   | "shy_nervous";
 
-const POSE_SRC: Record<MascotPose, string> = {
+export const POSE_SRC: Record<MascotPose, string> = {
   neutral_walk: "/mascot/neutral_walk.png",
   celebrate_jump: "/mascot/celebrate_jump.png",
   heart_hug: "/mascot/heart_hug.png",
