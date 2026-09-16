@@ -7,7 +7,7 @@ import { Flame } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import ProfileSwitcher from "@/components/profile/ProfileSwitcher";
-import { getLessonCards } from "@/lib/lessons";
+import { getLessonCards, pickTodaysClass } from "@/lib/lessons";
 import { getProfiles, getActiveProfileId } from "@/lib/profiles";
 import { getChallengeAttemptsForProfile } from "@/lib/challengeAttempts";
 import { getFoodEventsForProfile } from "@/lib/foodEvents";
@@ -52,6 +52,12 @@ export default function LearnPage() {
   // completed) and should still show its mastery row.
   const allNutrients = TRACKED_NUTRIENT_KEYS;
   const lessonCards = activeProfile ? getLessonCards(activeProfile, events) : [];
+  // Not gated to once-per-day for now — repeatable anytime, same as the
+  // regular lesson cards below. A real daily/weekly lock is an easy
+  // follow-up, but for the hackathon build it'd risk the recorded demo
+  // hitting a "come back tomorrow" wall mid-take, for no real benefit
+  // during judging.
+  const todaysClass = activeProfile ? pickTodaysClass(mastery, lessonCards) : null;
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-4 p-4 pb-6">
@@ -114,6 +120,27 @@ export default function LearnPage() {
 
       {activeProfile && (
         <TutorTip profile={activeProfile} events={events} mastery={mastery} />
+      )}
+
+      {activeProfile && todaysClass && (
+        <Link href={`/learn/${todaysClass.id}/class`}>
+          <Card
+            variant="elevated"
+            className="flex items-center gap-3 border-[var(--color-primary)] bg-[var(--color-primary-container)] p-4 transition-colors"
+          >
+            <Image src={POSE_SRC.neutral_walk} alt="" width={56} height={56} aria-hidden />
+            <div className="flex-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-primary-dark)]">
+                Today&apos;s Class
+              </p>
+              <h2 className="text-sm font-semibold text-[var(--color-on-surface)]">{todaysClass.title}</h2>
+              <p className="mt-0.5 text-xs text-[var(--color-on-surface-variant)]">
+                A quick live lesson on {nutrientLabel(todaysClass.nutrientFocus)}, picked from{" "}
+                {activeProfile.name}&apos;s weakest spot right now.
+              </p>
+            </div>
+          </Card>
+        </Link>
       )}
 
       <div className="flex flex-col gap-3">

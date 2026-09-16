@@ -10,8 +10,17 @@ import type { Profile } from "@/types/profile";
 import type { FoodEvent } from "@/types/foodEvent";
 import type { NutrientKey } from "@/types/nutrientLimits";
 import { recordGeneratedAttempt } from "@/lib/generatedAttempt";
+import { profileLanguage } from "@/types/profile";
 
 const LETTERS = ["A", "B"];
+const OPTION_LABEL: Record<"en" | "hi", Record<"under" | "over", string>> = {
+  en: { under: "Under the limit", over: "Over the limit" },
+  hi: { under: "सीमा से कम", over: "सीमा से ज़्यादा" },
+};
+const VS_DAILY_LIMIT: Record<"en" | "hi", (label: string, value: number, limit: number, unit: string) => string> = {
+  en: (label, value, limit, unit) => `${label}: ${value}${unit} vs a ${limit}${unit} daily limit.`,
+  hi: (label, value, limit, unit) => `${label}: ${value}${unit}, रोज़ की ${limit}${unit} सीमा की तुलना में।`,
+};
 
 export default function BarVsLimitBlockView({
   block,
@@ -33,6 +42,7 @@ export default function BarVsLimitBlockView({
   const answered = guess !== null;
   const correct = answered && guess === actual;
   const percentOfLimit = Math.round((block.value / block.limit) * 100);
+  const lang = profileLanguage(profile);
 
   function pick(g: "over" | "under") {
     setGuess(g);
@@ -51,7 +61,7 @@ export default function BarVsLimitBlockView({
           <OptionButton
             key={option}
             letter={LETTERS[i]}
-            label={`${option[0].toUpperCase()}${option.slice(1)} the limit`}
+            label={OPTION_LABEL[lang][option]}
             disabled={answered}
             onClick={() => pick(option)}
             state={
@@ -63,7 +73,7 @@ export default function BarVsLimitBlockView({
       {answered && (
         <div className="flex flex-col gap-2 border-t border-[var(--color-outline)] pt-3">
           <p className="text-sm text-[var(--color-on-surface)]">
-            {block.label}: {block.value}{block.unit} vs a {block.limit}{block.unit} daily limit.
+            {VS_DAILY_LIMIT[lang](block.label, block.value, block.limit, block.unit)}
           </p>
           <div className="flex items-center gap-2">
             <div className="h-2 flex-1 overflow-hidden rounded-[var(--radius-pill)] bg-[var(--color-surface-variant)]">

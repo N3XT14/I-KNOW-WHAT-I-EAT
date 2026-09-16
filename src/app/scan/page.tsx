@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Camera, Upload, Loader2, RotateCcw, ChevronDown, UtensilsCrossed } from "lucide-react";
+import { Camera, Upload, Loader2, RotateCcw, ChevronDown, UtensilsCrossed, Volume2, Square } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
@@ -11,7 +11,7 @@ import ProfileSwitcher from "@/components/profile/ProfileSwitcher";
 import type { ScanApiResponse } from "@/types/scanResult";
 import type { FoodItem } from "@/types/foodItem";
 import { isSourced, itemHasFlag, itemHeadline, itemTitle } from "@/types/foodItem";
-import { currentAgeBand, type Profile } from "@/types/profile";
+import { currentAgeBand, profileLanguage, type Profile } from "@/types/profile";
 import { getProfiles, getActiveProfileId } from "@/lib/profiles";
 import { evaluateNutrientForConsumption, type NutrientEvaluation } from "@/types/learnMode";
 import { FSSAI_LABEL_BASIS, TRACKED_NUTRIENT_KEYS, type NutrientKey } from "@/types/nutrientLimits";
@@ -21,6 +21,8 @@ import type { FoodEvent } from "@/types/foodEvent";
 import { updateFoodEvent } from "@/lib/foodEvents";
 import { createMeal, addFoodEventToMeal, type Meal } from "@/types/meal";
 import { saveMeal, updateMeal, getMeal, getActiveMealId, setActiveMealId } from "@/lib/meals";
+import { speak, stopSpeaking, isSpeechSupported, getVoicesForLang, pickBestVoice } from "@/lib/speech";
+import { getVoicePref } from "@/lib/voicePref";
 
 // FSSAI's %RDA on a label is always computed against one fixed adult
 // reference (see FSSAI_LABEL_BASIS), regardless of who's actually eating
@@ -57,10 +59,20 @@ const VERDICT_POSE: Record<"good" | "caution" | "high", MascotPose> = {
   caution: "heart_hug",
   high: "shy_nervous",
 };
-const VERDICT_LINE: Record<"good" | "caution" | "high", string> = {
-  good: "Nice pick — this one's easy on the label.",
-  caution: "Worth a second look before you dig in.",
-  high: "Heads up, this one runs high — check what for below.",
+// Hindi lines added alongside the existing English ones (same small,
+// self-contained microcopy this mascot placement already owned) — not a
+// wider static-UI-chrome translation pass.
+const VERDICT_LINE: Record<"en" | "hi", Record<"good" | "caution" | "high", string>> = {
+  en: {
+    good: "Nice pick — this one's easy on the label.",
+    caution: "Worth a second look before you dig in.",
+    high: "Heads up, this one runs high — check what for below.",
+  },
+  hi: {
+    good: "अच्छी पसंद — यह लेबल पर हल्का है।",
+    caution: "खाने से पहले एक बार और देख लें।",
+    high: "ध्यान दें, यह ज़्यादा है — नीचे देखें किसमें।",
+  },
 };
 
 function verdictTone(comparisons: Comparison[], flagged: boolean): "good" | "caution" | "high" {
@@ -71,6 +83,83 @@ function verdictTone(comparisons: Comparison[], flagged: boolean): "good" | "cau
     return "good";
   }
   return flagged ? "high" : "good";
+}
+
+// Composes the same information the visual result card shows into plain
+// sentences, for the "Read aloud" button — this is the actual
+// accessibility feature, not the button itself. Deliberately doesn't
+// read everything the full breakdown shows (every nutrient line, every
+// claim) — that's a wall of numbers even visually; it reads the verdict,
+// what it means for the logged profile's limits, and anything flagged as
+// misleading or worth watching, same priority order a sighted user's eye
+// would actually land on.
+//
+// lang only changes the app's own scaffolding sentences below. headline
+// .verdict/.drivingFact, item title, and claim text/notes all come from
+// Gemini's label extraction, which isn't itself localized (out of scope
+// per the multilingual decision) — so a Hindi read-aloud is genuinely
+// bilingual: Hindi connective sentences around English extracted facts,
+// not a fully Hindi narration.
+function buildScanNarration(
+  item: FoodItem,
+  comparisons: Comparison[],
+  activeProfile: Profile | null,
+  lang: "en" | "hi",
+): string {
+  const sentences: string[] = [];
+  const headline = itemHeadline(item);
+  sentences.push(`${headline.verdict}. ${headline.drivingFact}`);
+
+  const title = itemTitle(item);
+  if (title) sentences.push(lang === "hi" ? `यह ${title} है।` : `This is ${title}.`);
+
+  if (isSourced(item)) {
+    if (comparisons.length > 0 && activeProfile) {
+      for (const { nutrient, evaluation } of comparisons) {
+        const label = nutrientLabel(nutrient, lang);
+        if (lang === "hi") {
+          const overLimit = evaluation.percentOfLimit >= 100 ? " यह रोज़ की सीमा से ज़्यादा है।" : "";
+          sentences.push(
+            `${label}, ${activeProfile.name} की रोज़ की सीमा का ${evaluation.percentOfLimit} प्रतिशत है।${overLimit}`,
+          );
+        } else {
+          const overLimit = evaluation.percentOfLimit >= 100 ? " That's over the daily limit." : "";
+          sentences.push(
+            `${label} is ${evaluation.percentOfLimit} percent of ${activeProfile.name}'s daily limit.${overLimit}`,
+          );
+        }
+      }
+    } else if (activeProfile) {
+      sentences.push(
+        lang === "hi"
+          ? `${activeProfile.name} के लिए इसे लॉग करें ताकि पता चले कि यह उनकी रोज़ की सीमा के लिए क्या मायने रखता है।`
+          : `Log this for ${activeProfile.name} to hear what it means for their daily limits.`,
+      );
+    }
+
+    const misleadingClaims = item.extraction.claims.filter((c) => c.isMisleading);
+    for (const claim of misleadingClaims) {
+      sentences.push(
+        lang === "hi"
+          ? `ध्यान दें — दावा "${claim.text}" भ्रामक हो सकता है। ${claim.note}`
+          : `Heads up — the claim "${claim.text}" may be misleading. ${claim.note}`,
+      );
+    }
+  } else {
+    sentences.push(
+      lang === "hi"
+        ? "यहाँ कोई छपा हुआ लेबल नहीं है, इसलिए यह फ़ोटो से एक सामान्य अंदाज़ा है, सटीक आंकड़े नहीं।"
+        : "There's no printed label here, so this is a general read from the photo, not exact numbers.",
+    );
+    const highWatchItems = item.extraction.watchItems.filter((w) => w.level === "high");
+    for (const w of highWatchItems) {
+      sentences.push(
+        lang === "hi" ? `ध्यान देने लायक: ${w.nutrient}. ${w.note}` : `Worth watching: ${w.nutrient}. ${w.note}`,
+      );
+    }
+  }
+
+  return sentences.join(" ");
 }
 
 function fileToBase64(file: File): Promise<{ base64: string; mediaType: string }> {
@@ -100,6 +189,13 @@ export default function ScanPage() {
   const [activeProfileId, setActiveProfileIdState] = useState<string | null>(null);
   const [loggedEvent, setLoggedEvent] = useState<FoodEvent | null>(null);
   const [showFullBreakdown, setShowFullBreakdown] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  // No picker UI anymore — pickBestVoice() in lib/speech.ts auto-selects
+  // the best available voice (preferring a "Google <language>" voice
+  // over older per-language ones, confirmed better at pronouncing
+  // numbers). This just remembers which one that resolved to, so
+  // handleReadAloud doesn't have to re-resolve it on every click.
+  const [selectedVoiceURI, setSelectedVoiceURI] = useState<string | null>(null);
   // The one in-progress meal, if any. Restored from persisted storage on
   // mount (see lib/meals.ts) rather than starting at null every time, so
   // navigating to History and back mid-meal doesn't silently orphan it —
@@ -114,6 +210,9 @@ export default function ScanPage() {
       setMealId(active);
       setMode("meal");
     }
+    // Stop any in-progress narration if the person navigates away —
+    // otherwise it keeps talking over whatever screen they land on next.
+    return () => stopSpeaking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -125,6 +224,8 @@ export default function ScanPage() {
   async function handleFile(file: File | undefined) {
     if (!file) return;
 
+    stopSpeaking();
+    setSpeaking(false);
     setStatus("loading");
     setErrorMessage(null);
     setItem(null);
@@ -141,6 +242,7 @@ export default function ScanPage() {
           imageBase64: base64,
           mediaType,
           userDescription: description.trim() || null,
+          language: activeLanguage,
         }),
       });
       const data: ScanApiResponse = await res.json();
@@ -165,6 +267,8 @@ export default function ScanPage() {
   // in progress, and mealId needs to survive so the next scan keeps
   // adding to the same meal instead of starting a new one.
   function resetScan() {
+    stopSpeaking();
+    setSpeaking(false);
     setPreviewUrl(null);
     setItem(null);
     setMultipleItemsNote(null);
@@ -179,6 +283,8 @@ export default function ScanPage() {
   function loadSample(id: string) {
     const sample = SEED_LABELS.find((s) => s.id === id);
     if (!sample) return;
+    stopSpeaking();
+    setSpeaking(false);
     setPreviewUrl(null);
     setMultipleItemsNote(null);
     setErrorMessage(null);
@@ -221,9 +327,25 @@ export default function ScanPage() {
   }
 
   const activeProfile = profiles.find((p) => p.id === activeProfileId) ?? null;
+  const activeLanguage = activeProfile ? profileLanguage(activeProfile) : "en";
   const activeConsumption =
     loggedEvent?.consumptions.find((c) => c.profileId === activeProfileId) ?? null;
   const activeMeal = mealId ? getMeal(mealId) : null;
+
+  useEffect(() => {
+    if (!isSpeechSupported()) return;
+    let cancelled = false;
+    getVoicesForLang(activeLanguage === "hi" ? "hi" : "en").then((voices) => {
+      if (cancelled) return;
+      // If the person's device has a stored voice preference from
+      // before the picker was removed, still honor it — otherwise
+      // default to the best-known voice (see pickBestVoice).
+      setSelectedVoiceURI(getVoicePref(activeLanguage) ?? pickBestVoice(voices)?.voiceURI ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeLanguage]);
 
   const comparisons: Comparison[] = (() => {
     if (!item || !isSourced(item) || !activeProfile || !activeConsumption) return [];
@@ -243,6 +365,25 @@ export default function ScanPage() {
 
   const flagged = item ? itemHasFlag(item) : false;
   const tone = verdictTone(comparisons, flagged);
+
+  function handleReadAloud() {
+    if (!item) return;
+    if (speaking) {
+      stopSpeaking();
+      setSpeaking(false);
+      return;
+    }
+    const lang = activeLanguage;
+    const text = buildScanNarration(item, comparisons, activeProfile, lang);
+    // Temporary debug aid — logs the exact string handed to the speech
+    // engine, so a mismatch between what's spoken and what's displayed
+    // can be diagnosed by comparing this against the on-screen text,
+    // rather than guessing from how it sounds. Safe to remove once the
+    // Hindi read-aloud investigation is done.
+    console.log("[read-aloud text]", text);
+    setSpeaking(true);
+    speak(text, () => setSpeaking(false), lang === "hi" ? "hi-IN" : "en-IN", selectedVoiceURI ?? undefined);
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-4 p-4 pb-6">
@@ -439,7 +580,7 @@ export default function ScanPage() {
       )}
 
       {item && (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3" aria-live="polite">
           {isSample && (
             <Badge tone="neutral" className="w-fit">
               Sample · not a live scan
@@ -452,7 +593,20 @@ export default function ScanPage() {
               profile's logged their portion (see the analysis card below);
               until then it falls back to the model's own flag. */}
           <Card variant="elevated" className="p-5">
-            <Badge tone={tone}>{itemHeadline(item).verdict}</Badge>
+            <div className="flex items-start justify-between gap-3">
+              <Badge tone={tone}>{itemHeadline(item).verdict}</Badge>
+              {isSpeechSupported() && (
+                <button
+                  type="button"
+                  onClick={handleReadAloud}
+                  aria-label={speaking ? "Stop reading result aloud" : "Read result aloud"}
+                  className="flex shrink-0 items-center gap-1.5 rounded-[var(--radius-pill)] border border-[var(--color-outline)] px-3 py-1.5 text-xs font-semibold text-[var(--color-on-surface)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary-dark)]"
+                >
+                  {speaking ? <Square className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                  {speaking ? "Stop" : "Read aloud"}
+                </button>
+              )}
+            </div>
             <p
               className="mt-2 text-lg font-semibold leading-snug text-[var(--color-on-surface)]"
               style={{ fontFamily: "var(--font-display)" }}
@@ -473,7 +627,11 @@ export default function ScanPage() {
               </p>
             )}
             <div className="mt-3">
-              <Mascot line={VERDICT_LINE[tone]} pose={VERDICT_POSE[tone]} size="sm" />
+              <Mascot
+                line={VERDICT_LINE[activeLanguage][tone]}
+                pose={VERDICT_POSE[tone]}
+                size="sm"
+              />
             </div>
           </Card>
 

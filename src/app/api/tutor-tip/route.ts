@@ -25,6 +25,15 @@ type TutorTipRequest = {
   attempted: number;
   strongNutrient: { nutrient: string; accuracy: number } | null;
   recentFoods: { productName: string; percentOfLimit: number }[];
+  language?: string;
+};
+
+// Same narrow scope as /api/learn-content's version: only the tutor's own
+// sentence changes language. Real data handed to it (productName, the
+// profile's name) is carried through as given.
+const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
+  en: "",
+  hi: " Write the coaching line in Hindi (Devanagari script), plain and warm — the way you'd talk to a parent at home, not textbook Hindi. Keep the profile's name and any product name exactly as given.",
 };
 
 const SYSTEM_PROMPT = `You are a warm, encouraging personal nutrition
@@ -109,6 +118,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const languageInstruction = LANGUAGE_INSTRUCTIONS[body.language ?? "en"] ?? "";
   const promptText = `Profile: ${body.profileName} (age band ${body.ageBand})
 Weak nutrient: ${body.weakNutrient} — ${body.accuracy}% accuracy over ${body.attempted} attempt(s)
 ${body.strongNutrient ? `Strong nutrient for contrast: ${body.strongNutrient.nutrient} — ${body.strongNutrient.accuracy}% accuracy` : "No strong nutrient to contrast."}
@@ -121,7 +131,7 @@ ${
     : "(none logged yet)"
 }
 
-Write the one coaching line now.`;
+Write the one coaching line now.${languageInstruction}`;
 
   try {
     const response = await fetchWithRetry(

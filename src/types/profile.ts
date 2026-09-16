@@ -42,20 +42,34 @@ export function currentAgeBand(dob: string): AgeBand {
 
 export type Sex = "male" | "female";
 
+// Generated-content language (Learn Mode content, scan read-aloud, tutor
+// tips) — NOT a full app-chrome locale. Static UI text stays English
+// regardless of this value; see the multilingual scope decision. Unset
+// (undefined) means English, same "additive, nothing regresses" pattern
+// as `sex` — every profile created before this field existed behaves
+// exactly like language: "en".
+export type Language = "en" | "hi";
+
+export function profileLanguage(profile: Profile): Language {
+  return profile.language ?? "en";
+}
+
 export type Profile = {
   id: string;
   name: string;
   dob: string; // ISO date, "YYYY-MM-DD" — the only thing captured at signup
   createdAt: string; // ISO timestamp
   sex?: Sex;
+  language?: Language;
 };
 
-export function createProfile(name: string, dob: string, sex?: Sex): Profile {
+export function createProfile(name: string, dob: string, sex?: Sex, language?: Language): Profile {
   return {
     id: crypto.randomUUID(),
     name,
     dob,
     createdAt: new Date().toISOString(),
     ...(sex ? { sex } : {}),
+    ...(language && language !== "en" ? { language } : {}),
   };
 }

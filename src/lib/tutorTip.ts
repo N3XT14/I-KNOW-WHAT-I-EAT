@@ -14,7 +14,7 @@ import { getChallengeAttemptsForProfile } from "@/lib/challengeAttempts";
 import { masteryByNutrient, type NutrientMastery } from "@/lib/streaks";
 import { eligibleFoodsForNutrient } from "@/lib/challengePool";
 import { nutrientLabel } from "@/lib/nutrientLabels";
-import { currentAgeBand, type Profile } from "@/types/profile";
+import { currentAgeBand, profileLanguage, type Profile } from "@/types/profile";
 import type { FoodEvent } from "@/types/foodEvent";
 import type { TutorTipApiResponse } from "@/types/tutorTip";
 
@@ -57,8 +57,11 @@ export function pickWeakNutrient(
 // Changes whenever there's new evidence worth a fresh tip (more
 // attempts, a changed accuracy) or a new day — stable otherwise, so
 // repeat visits the same day with no new activity reuse the cached line.
-export function tutorTipCacheKey(profileId: string, weak: NutrientMastery): string {
-  return `${profileId}:${localDateKey()}:${weak.nutrient}:${weak.attempted}:${weak.accuracy}`;
+// language is folded in too, same reasoning as the Learn content cache:
+// switching a profile's language shouldn't serve back a tip generated in
+// the other language.
+export function tutorTipCacheKey(profileId: string, weak: NutrientMastery, language: string = "en"): string {
+  return `${profileId}:${localDateKey()}:${weak.nutrient}:${weak.attempted}:${weak.accuracy}:${language}`;
 }
 
 const CACHE_PREFIX = "iky-tutor-tip:";
@@ -96,7 +99,8 @@ export async function refreshTutorTip(profile: Profile, events: FoodEvent[]): Pr
   const picked = pickWeakNutrient(mastery);
   if (!picked) return;
 
-  const cacheKey = tutorTipCacheKey(profile.id, picked.weak);
+  const language = profileLanguage(profile);
+  const cacheKey = tutorTipCacheKey(profile.id, picked.weak, language);
   if (getCachedTip(cacheKey)) return; // this exact weak-nutrient state was already coached on
 
   const eligible = eligibleFoodsForNutrient(events, profile, picked.weak.nutrient);
@@ -111,13 +115,14 @@ export async function refreshTutorTip(profile: Profile, events: FoodEvent[]): Pr
       body: JSON.stringify({
         profileName: profile.name,
         ageBand: currentAgeBand(profile.dob),
-        weakNutrient: nutrientLabel(picked.weak.nutrient),
+        weakNutrient: nutrientLabel(picked.weak.nutrient, language),
         accuracy: picked.weak.accuracy,
         attempted: picked.weak.attempted,
         strongNutrient: picked.strong
-          ? { nutrient: nutrientLabel(picked.strong.nutrient), accuracy: picked.strong.accuracy }
+          ? { nutrient: nutrientLabel(picked.strong.nutrient, language), accuracy: picked.strong.accuracy }
           : null,
         recentFoods,
+        language,
       }),
     });
     const data = (await res.json()) as TutorTipApiResponse;

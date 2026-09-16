@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Profile } from "@/types/profile";
 import type { FoodEvent } from "@/types/foodEvent";
-import { currentAgeBand } from "@/types/profile";
+import { currentAgeBand, profileLanguage } from "@/types/profile";
 import type { NutrientMastery } from "@/lib/streaks";
 import { eligibleFoodsForNutrient } from "@/lib/challengePool";
 import { pickWeakNutrient, tutorTipCacheKey, getCachedTip, setCachedTip } from "@/lib/tutorTip";
@@ -34,8 +34,9 @@ export default function TutorTip({
   events: FoodEvent[];
   mastery: NutrientMastery[];
 }) {
+  const language = profileLanguage(profile);
   const picked = pickWeakNutrient(mastery);
-  const cacheKey = picked ? tutorTipCacheKey(profile.id, picked.weak) : null;
+  const cacheKey = picked ? tutorTipCacheKey(profile.id, picked.weak, language) : null;
 
   // Lazy init reads the cache synchronously on first render — no flash of
   // an empty card while an effect catches up, since this is a plain
@@ -71,13 +72,14 @@ export default function TutorTip({
       body: JSON.stringify({
         profileName: profile.name,
         ageBand: currentAgeBand(profile.dob),
-        weakNutrient: nutrientLabel(picked.weak.nutrient),
+        weakNutrient: nutrientLabel(picked.weak.nutrient, language),
         accuracy: picked.weak.accuracy,
         attempted: picked.weak.attempted,
         strongNutrient: picked.strong
-          ? { nutrient: nutrientLabel(picked.strong.nutrient), accuracy: picked.strong.accuracy }
+          ? { nutrient: nutrientLabel(picked.strong.nutrient, language), accuracy: picked.strong.accuracy }
           : null,
         recentFoods,
+        language,
       }),
     })
       .then((res) => res.json() as Promise<TutorTipApiResponse>)

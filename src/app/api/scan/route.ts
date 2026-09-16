@@ -86,6 +86,128 @@ Both cases:
 - Keep every note and the headline warm, plain, and non-alarming — this is
   for a parent glancing at their phone, not a lab report.`;
 
+// Appended when the requesting profile's language is Hindi. Scoped
+// narrowly: only the app's own generated prose (headline.verdict,
+// headline.drivingFact, claims[].note, estimated.watchItems[].note)
+// changes language. productName, servingSize, nutrients[].name/amount,
+// and claims[].text are all real printed values — carry those through
+// exactly as read off the label/package regardless of language.
+//
+// This is NOT sent to the vision call — see localizeScanText below for
+// why. It's the instruction used for the second, text-only translation
+// pass.
+const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
+  en: "",
+  hi: `Translate each value in the JSON object below into Hindi, using
+the Devanagari script. Use plain, everyday Hindi — the way you'd explain
+a label to a parent at home, not textbook or formal Hindi. Prefer a
+common Hindi word over a technical loanword wherever one exists (e.g.
+"चीनी" not an English word for sugar); when no natural Hindi word exists
+for a nutrition term, write the English term phonetically in Devanagari
+(e.g. "सैचुरेटेड फैट") rather than switching to Latin script. Preserve
+the exact meaning and every number exactly as given — this is a
+translation of already-decided facts, not a chance to re-describe or
+re-emphasize anything differently. Return a JSON object with the exact
+same keys, each value replaced with its Hindi translation. If a value
+quotes a product name or claim text verbatim (in quotation marks),
+transliterate that quoted part phonetically into Devanagari too rather
+than leaving it in Latin script, while keeping its wording and meaning
+unchanged.`,
+};
+
+// Localizes the prose fields of an already-extracted result via a
+// second, text-only Gemini call, instead of asking the vision call to
+// produce Hindi directly. This matters for more than just convenience:
+// headline.verdict/drivingFact and the claim/watch-item notes are
+// generative writing, not OCR — asking two independent vision calls (one
+// per language) to "read this photo and describe it" can genuinely
+// diverge in which number or nutrient each one chooses to foreground,
+// even at temperature 0.3. That means an English scan and a Hindi scan
+// of the same photo could end up saying meaningfully different things,
+// not just the same thing in a different language — confusing at best,
+// a real trust problem for a food-literacy app at worst. Extracting the
+// facts once in English and translating that exact text removes that
+// risk: the second call has no image and nothing to freely reinterpret,
+// only strings to translate.
+//
+// Never throws — on any failure (bad JSON, network error, malformed
+// shape) this returns `raw` unchanged, so a translation hiccup degrades
+// to "still-correct English text" rather than a broken response.
+async function localizeScanText(raw: RawScanResult, language: string): Promise<RawScanResult> {
+  if (language === "en" || !LANGUAGE_INSTRUCTIONS[language]) return raw;
+
+  const toTranslate: Record<string, string> = {
+    verdict: raw.headline.verdict,
+    drivingFact: raw.headline.drivingFact,
+  };
+  if (raw.kind === "sourced" && raw.sourced) {
+    raw.sourced.claims.forEach((c, i) => {
+      toTranslate[`claimNote${i}`] = c.note;
+    });
+  } else if (raw.kind === "estimated" && raw.estimated) {
+    raw.estimated.watchItems.forEach((w, i) => {
+      toTranslate[`watchNote${i}`] = w.note;
+    });
+  }
+
+  try {
+    const response = await fetchWithRetry(
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: `${LANGUAGE_INSTRUCTIONS[language]}\n\n${JSON.stringify(toTranslate)}` },
+              ],
+            },
+          ],
+          generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
+        }),
+      },
+      2, // this is a small, cheap, non-image call — one retry is enough
+    );
+    if (!response.ok) return raw;
+
+    const data = await response.json();
+    const rawText: string | undefined = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) return raw;
+
+    const translated = JSON.parse(rawText) as Record<string, string>;
+
+    const localized: RawScanResult = {
+      ...raw,
+      headline: {
+        verdict: translated.verdict ?? raw.headline.verdict,
+        drivingFact: translated.drivingFact ?? raw.headline.drivingFact,
+      },
+    };
+    if (localized.kind === "sourced" && localized.sourced) {
+      localized.sourced = {
+        ...localized.sourced,
+        claims: localized.sourced.claims.map((c, i) => ({
+          ...c,
+          note: translated[`claimNote${i}`] ?? c.note,
+        })),
+      };
+    } else if (localized.kind === "estimated" && localized.estimated) {
+      localized.estimated = {
+        ...localized.estimated,
+        watchItems: localized.estimated.watchItems.map((w, i) => ({
+          ...w,
+          note: translated[`watchNote${i}`] ?? w.note,
+        })),
+      };
+    }
+    return localized;
+  } catch (err) {
+    console.error("Scan text localization skipped:", err);
+    return raw;
+  }
+}
+
 const RESPONSE_SCHEMA = {
   type: "OBJECT",
   properties: {
@@ -230,6 +352,7 @@ export async function POST(request: NextRequest) {
     typeof body?.userDescription === "string" && body.userDescription.trim()
       ? body.userDescription.trim()
       : null;
+  const language: string = body?.language ?? "en";
 
   if (!imageBase64 || !mediaType) {
     return NextResponse.json<ScanApiResponse>(
@@ -238,11 +361,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const cached = await getCachedScan(imageBase64, mediaType, userDescription);
+  const cached = await getCachedScan(imageBase64, mediaType, userDescription, language);
   if (cached) {
     return NextResponse.json<ScanApiResponse>(cached);
   }
 
+  // Always extract in English, regardless of the requesting profile's
+  // language — see localizeScanText's comment for why. Only the
+  // English-facts-then-translate path varies by language, not the vision
+  // read itself.
   const promptText = userDescription
     ? `Read this food photo per the system instructions. Extra context from the user: "${userDescription}"`
     : "Read this food photo per the system instructions. No extra context was given.";
@@ -295,13 +422,14 @@ export async function POST(request: NextRequest) {
     }
 
     const raw = JSON.parse(rawText) as RawScanResult;
-    const item = toFoodItem(raw, userDescription);
+    const localizedRaw = await localizeScanText(raw, language);
+    const item = toFoodItem(localizedRaw, userDescription);
     const result: Extract<ScanApiResponse, { ok: true }> = {
       ok: true,
       item,
-      multipleItemsNote: raw.multipleItemsNote,
+      multipleItemsNote: localizedRaw.multipleItemsNote,
     };
-    await setCachedScan(imageBase64, mediaType, userDescription, result);
+    await setCachedScan(imageBase64, mediaType, userDescription, language, result);
 
     return NextResponse.json<ScanApiResponse>(result);
   } catch (err) {

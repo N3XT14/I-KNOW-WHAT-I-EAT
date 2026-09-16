@@ -27,6 +27,8 @@ import type { Lesson, LessonAngle } from "@/types/learnMode";
 import { eligibleFoodsForNutrient, decoyCandidates, type EligibleFood } from "@/lib/challengePool";
 import { nutrientLabel } from "@/lib/nutrientLabels";
 import { getCompletedLessonIds } from "@/lib/lessonCompletions";
+import { pickWeakNutrient } from "@/lib/tutorTip";
+import type { NutrientMastery } from "@/lib/streaks";
 
 const LESSON_ANGLES: LessonAngle[] = ["basics", "claims", "compare", "hidden-sources"];
 
@@ -133,4 +135,28 @@ export function getLessonCards(profile: Profile, events: FoodEvent[], cooldownDa
   }
 
   return cards;
+}
+
+// Picks the one lesson "Today's Class" should open directly into — the
+// weakest-mastery nutrient's earliest available angle (basics first,
+// since getLessonCards already emits angles in that order per nutrient),
+// falling back through the remaining tracked nutrients in their normal
+// order if the weakest one has no eligible card left (e.g. already
+// completed today). Reuses the exact same weak-nutrient logic as the
+// tutor tip nudge, so "today's class" and "what the tutor is nudging
+// about" are always pointing at the same thing, not two different
+// opinions about what needs work.
+//
+// Returns null only when there's truly nothing left to teach (every
+// eligible card, for every nutrient, already completed) — the caller
+// should hide the "Today's Class" entry point in that case.
+export function pickTodaysClass(mastery: NutrientMastery[], cards: Lesson[]): Lesson | null {
+  if (cards.length === 0) return null;
+  const weak = pickWeakNutrient(mastery)?.weak.nutrient;
+  const priority = weak ? [weak, ...TRACKED_NUTRIENT_KEYS.filter((n) => n !== weak)] : TRACKED_NUTRIENT_KEYS;
+  for (const nutrient of priority) {
+    const match = cards.find((c) => c.nutrientFocus === nutrient);
+    if (match) return match;
+  }
+  return null;
 }

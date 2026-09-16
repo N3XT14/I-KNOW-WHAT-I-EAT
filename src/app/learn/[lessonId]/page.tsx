@@ -150,6 +150,15 @@ export default function LessonPage() {
       <Card variant="elevated" className="flex flex-col gap-2 p-5">
         <h1 className="text-lg font-semibold text-[var(--color-on-surface)]">{lesson.title}</h1>
         <p className="text-sm leading-relaxed text-[var(--color-on-surface-variant)]">{lesson.body}</p>
+        {activeProfile && (
+          <button
+            type="button"
+            onClick={() => router.push(`/learn/${lesson.id}/class`)}
+            className="mt-1 self-start rounded-[var(--radius-pill)] border border-[var(--color-primary)] px-3.5 py-2 text-sm font-semibold text-[var(--color-primary-dark)]"
+          >
+            Take this as a live class instead
+          </button>
+        )}
       </Card>
 
       <div className="flex flex-col gap-3">

@@ -10,11 +10,18 @@ import type { Profile } from "@/types/profile";
 import type { FoodEvent } from "@/types/foodEvent";
 import type { NutrientKey } from "@/types/nutrientLimits";
 import { recordGeneratedAttempt } from "@/lib/generatedAttempt";
+import { profileLanguage } from "@/types/profile";
 
-const OPTIONS = [
-  { value: true, label: "Misleading" },
-  { value: false, label: "Accurate" },
-];
+const OPTIONS: Record<"en" | "hi", { value: boolean; label: string }[]> = {
+  en: [
+    { value: true, label: "Misleading" },
+    { value: false, label: "Accurate" },
+  ],
+  hi: [
+    { value: true, label: "भ्रामक" },
+    { value: false, label: "सही" },
+  ],
+};
 const LETTERS = ["A", "B"];
 
 export default function SpotTheTrickBlockView({
@@ -35,6 +42,7 @@ export default function SpotTheTrickBlockView({
   const [guess, setGuess] = useState<boolean | null>(null);
   const answered = guess !== null;
   const correct = answered && guess === block.isMisleading;
+  const options = OPTIONS[profileLanguage(profile)];
 
   function pick(value: boolean) {
     setGuess(value);
@@ -52,7 +60,7 @@ export default function SpotTheTrickBlockView({
         &ldquo;{block.claimText}&rdquo;
       </div>
       <div className="grid grid-cols-2 gap-2">
-        {OPTIONS.map((option, i) => (
+        {options.map((option, i) => (
           <OptionButton
             key={option.label}
             letter={LETTERS[i]}

@@ -28,6 +28,18 @@ export function saveProfile(profile: Profile): void {
   }
 }
 
+// Generic patch — used for anything editable after signup (currently just
+// language). Rewrites the whole profiles array since that's how the rest
+// of this file already persists (no per-profile storage key).
+export function updateProfile(profileId: string, patch: Partial<Profile>): void {
+  if (!isBrowser()) return;
+  const profiles = getProfiles();
+  const idx = profiles.findIndex((p) => p.id === profileId);
+  if (idx === -1) return;
+  profiles[idx] = { ...profiles[idx], ...patch };
+  window.localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
+}
+
 export function deleteProfile(profileId: string): void {
   if (!isBrowser()) return;
   const remaining = getProfiles().filter((p) => p.id !== profileId);

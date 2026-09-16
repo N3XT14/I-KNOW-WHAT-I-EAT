@@ -7,8 +7,8 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/Popover";
-import { currentAgeBand, type Profile } from "@/types/profile";
-import { setActiveProfileId } from "@/lib/profiles";
+import { currentAgeBand, profileLanguage, type Language, type Profile } from "@/types/profile";
+import { setActiveProfileId, updateProfile } from "@/lib/profiles";
 import ProfileOnboarding from "@/components/profile/ProfileOnboarding";
 
 function initials(name: string) {
@@ -93,6 +93,37 @@ export default function ProfileSwitcher({
               <Plus className="h-4 w-4" />
               Add family member
             </button>
+
+            {active && (
+              <div className="mt-1 flex items-center justify-between gap-2 border-t border-[var(--color-outline)] px-2 pt-2">
+                <span className="text-xs text-[var(--color-on-surface-variant)]">Content language</span>
+                <div className="flex gap-1">
+                  {(
+                    [
+                      { value: "en", label: "EN" },
+                      { value: "hi", label: "हि" },
+                    ] as const
+                  ).map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        if (profileLanguage(active) === option.value) return;
+                        updateProfile(active.id, { language: option.value as Language });
+                        onChange();
+                      }}
+                      className={`rounded-[var(--radius-sm)] px-2 py-1 text-xs transition-colors ${
+                        profileLanguage(active) === option.value
+                          ? "bg-[var(--color-primary-container)] text-[var(--color-primary-dark)]"
+                          : "text-[var(--color-on-surface-variant)]"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </PopoverContent>

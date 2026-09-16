@@ -23,6 +23,32 @@ const ANGLE_INSTRUCTIONS: Record<string, string> = {
     'Angle: hidden-sources. This card is specifically about contrasting what the profile has actually eaten against a food they have NOT logged. Prioritize a "decoy" block: real = one entry from "scanFoods", decoy = one entry from "decoyFoods". Only use another kind if the packet cannot support that.',
 };
 
+// Appended alongside ANGLE_INSTRUCTIONS. Scoped narrowly on purpose: only
+// the sentences you write (text/prompt/explanation/mascotLine/option
+// labels/pair terms & meanings) change language. Anything copied straight
+// from the facts packet — productName, claimText, glossary term/meaning —
+// is real data pulled from the label/extraction, which isn't itself
+// localized, so it must be carried through byte-for-byte regardless of
+// language; only your own generated prose around it changes.
+const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
+  en: "",
+  hi: `Language: Hindi. Write every prose field you generate — "text",
+"prompt", "explanation", "mascotLine", option "label"s, and matching
+"pairs" (term + meaning) — in Hindi, using the Devanagari script. Use
+plain, warm, everyday Hindi, the way you would explain a food label to a
+parent at home — not formal or textbook Hindi. Prefer a common Hindi word
+over a technical loanword wherever one exists; when no natural Hindi word
+exists for a term, write it phonetically in Devanagari rather than
+switching to Latin script, so the whole sentence stays readable to
+someone who reads Devanagari but not Latin script. This includes when you
+quote a claim, product name, or other string from "claims" or
+"scanFoods" inside your own sentence: render it phonetically in
+Devanagari (transliterated), preserving its exact wording and meaning —
+never leave it in Latin-script English embedded in an otherwise-Hindi
+sentence, and never change what the claim actually says while
+transliterating it.`,
+};
+
 const SYSTEM_PROMPT = `You write short Learn Mode content for a food-label
 literacy app aimed at parents and kids in India. You will be given a
 JSON "facts" packet — real logged foods, real nutrient limits, real
@@ -414,12 +440,14 @@ export async function POST(request: NextRequest) {
   const lessonId: string | undefined = body?.lessonId;
   const facts: LearnFactsPacket | undefined = body?.facts;
   const angle: string = body?.angle ?? "basics";
+  const language: string = body?.language ?? "en";
   if (!lessonId || !facts) {
     return NextResponse.json({ ok: false, error: "Missing lessonId or facts." }, { status: 400 });
   }
 
   const knownIds = new Set(facts.scanFoods.map((f) => f.foodEventId));
   const angleInstruction = ANGLE_INSTRUCTIONS[angle] ?? ANGLE_INSTRUCTIONS.basics;
+  const languageInstruction = LANGUAGE_INSTRUCTIONS[language] ?? "";
 
   try {
     const response = await fetchWithRetry(
@@ -429,7 +457,13 @@ export async function POST(request: NextRequest) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          contents: [{ parts: [{ text: `Facts packet:\n${JSON.stringify(facts)}\n\n${angleInstruction}` }] }],
+          contents: [
+            {
+              parts: [
+                { text: `Facts packet:\n${JSON.stringify(facts)}\n\n${angleInstruction}${languageInstruction ? `\n\n${languageInstruction}` : ""}` },
+              ],
+            },
+          ],
           // responseJsonSchema (not responseSchema) — the older field is
           // OpenAPI-flavored and rejects anyOf outright; responseJsonSchema
           // is real JSON Schema and is what lets the per-kind required

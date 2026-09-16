@@ -1,6 +1,10 @@
 // Dev-time cache for /api/scan's Gemini call, keyed by a hash of the
 // image bytes plus whatever optional context text was sent (since that
-// text can change the read). Re-scanning the exact same test photo while
+// text can change the read) and the requested language (since the
+// headline is now generated in that language — without this, re-scanning
+// the same test photo after switching a profile's language would silently
+// serve back the other language's cached extraction instead of calling
+// Gemini again). Re-scanning the exact same test photo while
 // iterating on the UI or the prompt shouldn't burn tokens, eat into the
 // free-tier rate limit, or risk a transient 503 like:
 //   "This model is currently experiencing high demand... UNAVAILABLE"
@@ -31,10 +35,11 @@ const CACHE_ENABLED = process.env.NODE_ENV !== "production";
 
 type CachedScan = Extract<ScanApiResponse, { ok: true }>;
 
-function cacheKey(imageBase64: string, mediaType: string, contextText: string | null): string {
+function cacheKey(imageBase64: string, mediaType: string, contextText: string | null, language: string): string {
   return createHash("sha256")
     .update(mediaType)
     .update(contextText ?? "")
+    .update(language)
     .update(imageBase64)
     .digest("hex");
 }
@@ -43,10 +48,11 @@ export async function getCachedScan(
   imageBase64: string,
   mediaType: string,
   contextText: string | null,
+  language: string,
 ): Promise<CachedScan | null> {
   if (!CACHE_ENABLED) return null;
   try {
-    const file = path.join(CACHE_DIR, `${cacheKey(imageBase64, mediaType, contextText)}.json`);
+    const file = path.join(CACHE_DIR, `${cacheKey(imageBase64, mediaType, contextText, language)}.json`);
     const raw = await readFile(file, "utf-8");
     const parsed = JSON.parse(raw);
     // Defensive shape check — if a cache file ever doesn't match what this
@@ -67,12 +73,13 @@ export async function setCachedScan(
   imageBase64: string,
   mediaType: string,
   contextText: string | null,
+  language: string,
   result: CachedScan,
 ): Promise<void> {
   if (!CACHE_ENABLED) return;
   try {
     await mkdir(CACHE_DIR, { recursive: true });
-    const file = path.join(CACHE_DIR, `${cacheKey(imageBase64, mediaType, contextText)}.json`);
+    const file = path.join(CACHE_DIR, `${cacheKey(imageBase64, mediaType, contextText, language)}.json`);
     await writeFile(file, JSON.stringify(result, null, 2), "utf-8");
   } catch (err) {
     // A read-only filesystem or similar shouldn't fail the actual scan —

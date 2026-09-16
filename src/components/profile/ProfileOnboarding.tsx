@@ -4,7 +4,7 @@ import { useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Mascot from "@/components/learn/Mascot";
-import { createProfile, type Sex } from "@/types/profile";
+import { createProfile, type Sex, type Language } from "@/types/profile";
 import { saveProfile } from "@/lib/profiles";
 
 // Shown once on first launch (no profiles yet), and again any time someone
@@ -18,6 +18,7 @@ export default function ProfileOnboarding({ onDone }: { onDone: () => void }) {
   const [name, setName] = useState("");
   const [dob, setDob] = useState("");
   const [sex, setSex] = useState<Sex | null>(null);
+  const [language, setLanguage] = useState<Language>("en");
   const [error, setError] = useState<string | null>(null);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -39,7 +40,7 @@ export default function ProfileOnboarding({ onDone }: { onDone: () => void }) {
       return;
     }
 
-    saveProfile(createProfile(trimmedName, dob, sex ?? undefined));
+    saveProfile(createProfile(trimmedName, dob, sex ?? undefined, language));
     onDone();
   }
 
@@ -101,6 +102,33 @@ export default function ProfileOnboarding({ onDone }: { onDone: () => void }) {
                 }`}
               >
                 {option}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-[var(--color-on-surface-variant)]">
+            Learn Mode &amp; read-aloud language
+          </span>
+          <div className="flex gap-2">
+            {(
+              [
+                { value: "en", label: "English" },
+                { value: "hi", label: "हिन्दी" },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setLanguage(option.value)}
+                className={`flex-1 rounded-[var(--radius-md)] border px-3 py-2 text-sm transition-colors ${
+                  language === option.value
+                    ? "border-[var(--color-primary)] bg-[var(--color-primary-container)] text-[var(--color-primary-dark)]"
+                    : "border-[var(--color-outline)] text-[var(--color-on-surface)]"
+                }`}
+              >
+                {option.label}
               </button>
             ))}
           </div>

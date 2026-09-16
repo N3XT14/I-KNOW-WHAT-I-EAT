@@ -4,7 +4,7 @@
 // error screen) whenever generation fails.
 
 import type { FoodEvent } from "@/types/foodEvent";
-import type { Profile } from "@/types/profile";
+import { profileLanguage, type Profile } from "@/types/profile";
 import type { NutrientKey } from "@/types/nutrientLimits";
 import type { LessonAngle } from "@/types/learnMode";
 import type { LearnContentSequence } from "@/types/learnContent";
@@ -30,11 +30,15 @@ function localDateKey(d: Date = new Date()): string {
 // rules keeps serving it forever, never re-hitting the API to pick up
 // the fix. v5: generation now takes the lesson's angle into account
 // (see ANGLE_INSTRUCTIONS in the route), so a cached v4 result no longer
-// reflects what the current prompt would produce.
-const CONTENT_VERSION = "v5";
+// reflects what the current prompt would produce. v6: generation now
+// also takes the profile's language into account — bumped for the same
+// reason, and language is folded into the cache key itself so switching
+// a profile's language mid-session can't serve back a sequence that was
+// generated in the other language.
+const CONTENT_VERSION = "v6";
 
-function cacheKey(profileId: string, lessonId: string, scanFoodCount: number): string {
-  return `iky-learn-content:${CONTENT_VERSION}:${profileId}:${lessonId}:${localDateKey()}:${scanFoodCount}`;
+function cacheKey(profileId: string, lessonId: string, scanFoodCount: number, language: string): string {
+  return `iky-learn-content:${CONTENT_VERSION}:${profileId}:${lessonId}:${localDateKey()}:${scanFoodCount}:${language}`;
 }
 
 function getCached(key: string): LearnContentSequence | null {
@@ -64,7 +68,8 @@ export async function getLearnContent(
   angle: LessonAngle = "basics",
 ): Promise<LearnContentSequence> {
   const facts = buildFactsPacket(profile, events, nutrient);
-  const key = cacheKey(profile.id, lessonId, facts.scanFoods.length);
+  const language = profileLanguage(profile);
+  const key = cacheKey(profile.id, lessonId, facts.scanFoods.length, language);
 
   const cached = getCached(key);
   if (cached) return cached;
@@ -73,7 +78,7 @@ export async function getLearnContent(
     const res = await fetch("/api/learn-content", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ lessonId, facts, angle }),
+      body: JSON.stringify({ lessonId, facts, angle, language }),
     });
     const data = await res.json();
     if (data.ok) {
@@ -84,7 +89,7 @@ export async function getLearnContent(
     // fall through to the deterministic sequence below
   }
 
-  const fallback = buildFallbackSequence(lessonId, facts, angle);
+  const fallback = buildFallbackSequence(lessonId, facts, angle, language);
   setCached(key, fallback);
   return fallback;
 }
